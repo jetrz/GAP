@@ -1,0 +1,76 @@
+genome_info:
+  arab:
+    walk_valid_p: 0.01
+    paths:
+      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/arab.bp.raw.r_utg.gfa'
+      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/graphs/default/arab.dgl'
+      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_arab_n2s.pkl'
+      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/arab.ovlp.paf'
+      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/arab_paf_data.pkl'
+      reads: '/mnt/sod2-project/csb4/wgs/lovro/sequencing_data/arabidopsis_new/PacBio_HiFi/CRR302668_p0.22.fastq.gz'
+      reads_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/arab_fasta_data.pkl'
+      ref: '/mnt/sod2-project/csb4/wgs/lovro/gnnome_assembly/references/arabidopsis/latest/GWHBDNP00000000.1.genome.fasta'
+      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_arab_r2n.pkl'
+  chicken:
+    walk_valid_p:: 0.02
+    paths:
+      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/chicken.bp.raw.r_utg.gfa'
+      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/graphs/default/chicken.dgl'
+      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_chicken_n2s.pkl'
+      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/chicken.ovlp.paf'
+      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/chicken_paf_data.pkl'
+      reads: '/mnt/sod2-project/csb4/wgs/lovro/sequencing_data/gallus_gallus/HiFi/mat_0.5_30x.fastq.gz'
+      reads_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/chicken_fasta_data.pkl'
+      ref: '/mnt/sod2-project/csb4/wgs/lovro/gnnome_assembly/references/bGalGal1/maternal/GCF_016699485.2_bGalGal1.mat.broiler.GRCg7b_genomic.fna'
+      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_chicken_r2n.pkl'
+  chm13:
+    walk_valid_p:: 0.0005
+    paths:
+      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/chm13.bp.raw.r_utg.gfa'
+      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/graphs/default/chm13.dgl'
+      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_chm13_n2s.pkl'
+      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/chm13.ovlp.paf'
+      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/chm13_paf_data.pkl'
+      reads: '/mnt/sod2-project/csb4/wgs/lovro/sequencing_data/CHM13/PacBio_HiFi/SRR11292120_3_subreads.fastq.gz'
+      reads_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/chm13_fasta_data.pkl'
+      ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/chm13_v11/chm13_full_v1_1.fasta'
+      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_chm13_r2n.pkl'
+  maize:
+    walk_valid_p:: 0.001
+    paths:
+      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/maize.bp.raw.r_utg.gfa'
+      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/graphs/default/maize.dgl'
+      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_maize_n2s.pkl'
+      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/maize.ovlp.paf'
+      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/maize_paf_data.pkl'
+      reads: '/mnt/sod2-project/csb4/wgs/lovro/sequencing_data/zmays_Mo17/HiFi/zmays_Mo17-HiFi.fastq.gz'
+      reads_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/maize_fasta_data.pkl'
+      ref: '/mnt/sod2-project/csb4/wgs/lovro/gnnome_assembly/references/zmays_Mo17/zmays_Mo17.fasta'
+      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_maize_r2n.pkl'
+  maize-50p:
+    walk_valid_p:: 0.001
+    paths:
+      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/maize-50p.bp.raw.r_utg.gfa'
+      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/graphs/default/maize-50p.dgl'
+      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_maize-50p_n2s.pkl'
+      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/maize-50p.ovlp.paf'
+      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/maize-50p_paf_data.pkl'
+      reads: '/mnt/sod2-project/csb4/wgs/lovro/sequencing_data/zmays_Mo17/HiFi/zmays_Mo17-HiFi_p0.5.fastq.gz'
+      reads_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/maize-50p_fasta_data.pkl'
+      ref: '/mnt/sod2-project/csb4/wgs/lovro/gnnome_assembly/references/zmays_Mo17/zmays_Mo17.fasta'
+      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_maize-50p_r2n.pkl'
+  mouse:
+    walk_valid_p:: 0.001
+    paths:
+      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/mouse.bp.raw.r_utg.gfa'
+      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/graphs/default/mouse.dgl'
+      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_mouse_n2s.pkl'
+      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/mouse.ovlp.paf'
+      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/mouse_paf_data.pkl'
+      reads: '/mnt/sod2-project/csb4/wgs/lovro/sequencing_data/mus_musculus/SRR11606870.fastq'
+      reads_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/mouse_fasta_data.pkl'
+      ref: '/mnt/sod2-project/csb4/wgs/lovro/gnnome_assembly/references/mus_musculus/mmusculus_GRCm39.fna'
+      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_mouse_r2n.pkl'
+
+misc:
+  seqtk_path: '../GitHub/seqtk/seqtk'
