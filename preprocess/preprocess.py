@@ -1,13 +1,13 @@
 from datetime import datetime
-import dgl, pickle, yaml
+import dgl, pickle, torch, yaml
 
-from ..misc.utils import pyg_to_dgl, timedelta_to_str
+from misc.utils import pyg_to_dgl, timedelta_to_str
 from .gfa_util import preprocess_gfa
 from .fasta_util import parse_fasta
 from .paf_util import parse_paf
 
-def preprocess(genomes):
-    with open("../config.yaml") as file:
+def run_preprocessing(genomes):
+    with open("config.yaml") as file:
         config = yaml.safe_load(file)
 
     for genome in genomes:
@@ -29,8 +29,9 @@ def preprocess(genomes):
             pickle.dump(aux['n2s'], p)
         with open(genome_info['paths']['r2n'], "wb") as p:
             pickle.dump(aux['r2n'], p)
-        dgl_g = pyg_to_dgl(g, aux['node_attrs', aux['edge_attrs']])
-        dgl.save_graphs(genome_info['paths']['graph'], [dgl_g])
+        torch.save(g, genome_info['paths']['graph']+f'{genome}.pt')
+        dgl_g = pyg_to_dgl(g, aux['node_attrs'], aux['edge_attrs'])
+        dgl.save_graphs(genome_info['paths']['graph']+f'{genome}.dgl', [dgl_g])
 
         print(f"Processing Reads FASTA... (Time: {timedelta_to_str(datetime.now() - time_start)})")
         fasta_data = parse_fasta(genome_info['paths']['reads'])
@@ -42,6 +43,8 @@ def preprocess(genomes):
         paf_data = parse_paf(genome_info['paths']['paf'], aux)
         with open(genome_info['paths']['paf_processed'], "wb") as p:
             pickle.dump(paf_data, p)
+
+        print(f"Run finished! (Time: {timedelta_to_str(datetime.now() - time_start)})")
 
 
 
