@@ -1,28 +1,31 @@
 run:
   preprocessing:
     source: 'hifiasm'
-    genomes: 
-      - 'chm13'
+    genomes: ~
   generate_baseline:
     source: 'hifiasm'
     genomes:
-      - 'chm13'
+      - 'chicken'
   postprocessing:
     genomes:
-      - 'chm13'
+      - 'chicken'
 
-# postprocessing:
-#   walk_valid_p: 0.02
-#   use_telomere_info : true
-#   dfs_penalty: null # None, ol_len or ol_sim
-#   walk_var: 'telomere' # default or telomere
+postprocessing:
+  walk_valid_p: 0.02
+  use_telomere_info : true
+  dfs_penalty: null # None, ol_len or ol_sim
+  walk_var: 'telomere' # default or telomere
 
-# misc:
-#   paths:
-#     model: '/home/stumanuel/GAP/misc/default_best.pt'
-#     seqtk: '/home/stumanuel/GitHub/seqtk/seqtk'
-#     minigraph: '/home/stumanuel/GitHub/minigraph/minigraph'
-#     paftools: '/home/stumanuel/GitHub/minimap2/misc/paftools.js'
+misc:
+  paths:
+    model: '/home/stumanuel/GAP/misc/default_best.pt'
+    seqtk: '/home/stumanuel/GitHub/seqtk/seqtk'
+    minigraph: '/home/stumanuel/GitHub/minigraph/minigraph'
+    paftools: '/home/stumanuel/GitHub/minimap2/misc/paftools.js'
+
+
+
+
 
 # genome_info:
 #   arab:

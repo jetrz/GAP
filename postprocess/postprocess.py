@@ -486,6 +486,25 @@ def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, mem
         else:
             return False
 
+    def dedup(curr_node, curr_walk, curr_key_nodes, curr_penalty):
+        curr_walk_set = set(curr_walk)
+        if curr_node not in curr_walk_set:
+            return curr_walk, curr_key_nodes, curr_penalty
+        
+        c_walk, c_key_nodes, c_penalty = [], 0, 0
+        for i, n in enumerate(curr_walk):
+            if n == curr_node: break
+            c_walk.append(n)
+            if n < n_old_walks: c_key_nodes += 1
+            if i != len(curr_walk)-1:
+                c_edge = adj_list.get_edge(n, curr_walk[i+1])
+                if penalty == "ol_len":
+                    c_penalty -= c_edge.ol_len
+                elif penalty == "ol_sim":
+                    c_penalty += -1*c_edge.ol_sim
+
+        return c_walk, c_key_nodes, c_penalty
+
     def dfs(node, visited, walk_telo):
         if node < n_old_walks:
             telo_info = get_telo_info(node)
@@ -523,6 +542,8 @@ def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, mem
             else:
                 # Perform DFS on the neighbor and check the longest walk from that neighbor
                 current_walk, current_key_nodes, current_penalty = dfs(dst, visited, walk_telo)
+                # We have to check if there are duplicates in the returned walk. This is because of memoisation, where a returned memoised result can bypass visited set check.
+                current_walk, current_key_nodes, current_penalty = dedup(node, current_walk, current_key_nodes, current_penalty)
 
             # Add the penalty for selecting that neighbour, either based on OL Len or OL Sim
             if penalty == "ol_len":

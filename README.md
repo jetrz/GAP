@@ -33,7 +33,7 @@ The codebase is split into three main functions:
     <b>For GNNome</b><br>
     - Graph <br>- Node-to-sequence (n2s) <br>- Genome Reference<br><br>
     <b>For Hifiasm</b><br>
-    - GFA file <br>- Read-to-sequence (r2s) <br>- Genome Reference<br>
+    - GFA file <br>- Read-to-node (r2n) <br>- Read-to-sequence (r2s) <br>- Genome Reference<br>
     </td>
     <td>- Baseline walks & assembly</td>
   </tr>
@@ -62,7 +62,7 @@ r2s : {
     read_id (str) : (sequence, reverse comp) (tuple<str, str>)
 }
 
-Proccesed PAF: {
+Processed PAF: {
     ghost_edges = {
         'valid_src' : [node_id_1, ...] source nodes (list<int>),
         'valid_dst' : [node_id_2, ...] destination nodes (list<int>),
