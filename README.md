@@ -46,7 +46,52 @@ The codebase is split into three main functions:
 
 ### File Formats
 ```
+Graph: DGL Graph object. It is important that for each node with node_id, the node with its reverse complement is node_id+1. Additionally, the graph has:
+- Node features: ['N_ID', 'read_length']
+- Edge features: ['E_ID', 'prefix_length', 'overlap_length', 'overlap_similarity']
+
 n2s: {
+    node_id (int) : sequence (str)
+}
+
+r2n : {
+    read_id (str) : (real_node_id, virtual_node_id) (tuple<int, int>)
+}
+
+r2s : {
+    read_id (str) : (sequence, reverse comp) (tuple<str, str>)
+}
+
+Proccesed PAF: {
+    ghost_edges = {
+        'valid_src' : [node_id_1, ...] source nodes (list<int>),
+        'valid_dst' : [node_id_2, ...] destination nodes (list<int>),
+        'ol_len' : [overlap_length_1, ...] respective overlap lengths (list<int>),
+        'ol_similarity' : [overlap_similarity_1, ...] respective overlap similarities (list<int>),
+        'prefix_len' : [prefix_length_1, ...] respective prefix lengths (list<int>),
+        'edge_hops' : [hop_neighbourhood_1, ...] respective edge hops (list<int>)
+    },
+    ghost_nodes = {
+        'hop_<n>' {
+            '+' : {
+                read_id : {
+                    'read_len' : Read length for this read
+                    'outs' : [read_id, ...]
+                    'ol_len_outs' : [ol_len, ...],
+                    'ol_similarity_outs' : [ol_similarity, ...],
+                    'prefix_len_outs' : [prefix_len, ...],
+                    'ins' : [read_id, ...],
+                    'ol_len_ins' : [ol_len, ...],
+                    'ol_similarity_ins' : [ol_similarity, ...],
+                    'prefix_len_ins' : [prefix_len, ...],
+                }, 
+                read_id_2 : { ... },
+                ...
+            },
+            '-' : { ... }
+        },
+        'hop_<n+1>' : { ... }
+    }
 }
 ```
 
