@@ -1,7 +1,7 @@
 from Bio import Seq, SeqIO
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-import dgl, math, pickle, os, random, torch, yaml
+import dgl, math, pickle, os, random, torch
 
 from .SymGatedGCN import SymGatedGCNModel
 from misc.utils import asm_metrics, timedelta_to_str
@@ -312,9 +312,7 @@ def walk_to_sequence(walks, graph, aux):
 
     return contigs
 
-def inference(genome, gnnome_config, paths):
-    print(f"\n===== Decoding {genome} =====")
-
+def gnnome_decoding(genome, gnnome_config, paths):
     train_config = gnnome_config['training']
     decode_config = gnnome_config['decoding']
 
@@ -325,7 +323,7 @@ def inference(genome, gnnome_config, paths):
     g = dgl.load_graphs(paths['graph']+f'{genome}.dgl')[0][0]
     g, x, e = preprocess_graph(g)
 
-    save_path = paths['gnnome_save']
+    save_path = paths['baseline']
     if not os.path.isdir(save_path): os.makedirs(save_path)
 
     # Get scores
@@ -384,13 +382,3 @@ def inference(genome, gnnome_config, paths):
 
     print(f"Run finished! (Time: {timedelta_to_str(datetime.now() - time_start)})")
     return
-
-def run_gnnome_decoding(genomes):
-    with open("config.yaml") as file:
-        config = yaml.safe_load(file)
-        gnnome_config = config['gnnome']
-
-    for genome in genomes:
-        paths = config['genome_info'][genome]['paths']
-        paths.update(config['misc']['paths'])
-        inference(genome, gnnome_config, paths)

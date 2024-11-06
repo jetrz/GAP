@@ -4,7 +4,7 @@ import edlib
 from multiprocessing import Pool
 from tqdm import tqdm
 
-N2S, R2N, ANNOTATED_FASTA_DATA, SUCCESSOR_DICT, N2R, READS_PARSED = None, None, None, None, None, set()
+R2S, R2N, SUCCESSOR_DICT, N2R, READS_PARSED = None, None, None, None, set()
 
 # We have to do this because cannot pickle defaultdicts created by lambda
 def create_list_dd():
@@ -250,7 +250,7 @@ def parse_row(row):
     '''
     data = None
 
-    if not N2S or not R2N or not ANNOTATED_FASTA_DATA or not SUCCESSOR_DICT or not READS_PARSED:
+    if not R2S or not R2N or not N2R or not SUCCESSOR_DICT or not READS_PARSED:
         raise ValueError("Global objects not set!")
 
     row_split = row.strip().split()
@@ -293,14 +293,11 @@ def parse_row(row):
         return 3, row
         
     if src[1] == '+' and dst[1] == '+':
-        src_seq = N2S[R2N[src_id][0]] if src_id in R2N else ANNOTATED_FASTA_DATA[src_id][0]
-        dst_seq = N2S[R2N[dst_id][0]] if dst_id in R2N else ANNOTATED_FASTA_DATA[dst_id][0]
+        src_seq, dst_seq = R2S[src_id][0], R2S[dst_id][0]
     elif src[1] == '+' and dst[1] == '-':
-        src_seq = N2S[R2N[src_id][0]] if src_id in R2N else ANNOTATED_FASTA_DATA[src_id][0]
-        dst_seq = N2S[R2N[dst_id][1]] if dst_id in R2N else ANNOTATED_FASTA_DATA[dst_id][1]
+        src_seq, dst_seq = R2S[src_id][0], R2S[dst_id][1]
     elif src[1] == '-' and dst[1] == '+':
-        src_seq = N2S[R2N[src_id][1]] if src_id in R2N else ANNOTATED_FASTA_DATA[src_id][1]
-        dst_seq = N2S[R2N[dst_id][0]] if dst_id in R2N else ANNOTATED_FASTA_DATA[dst_id][0]
+        src_seq, dst_seq = R2S[src_id][1], R2S[dst_id][0]
     else:
         raise Exception("Unrecognised orientation pairing.")
 
@@ -427,8 +424,8 @@ def parse_paf(paf_path, aux):
     '''
     print("Parsing paf file...")
     
-    global N2S, R2N, ANNOTATED_FASTA_DATA, SUCCESSOR_DICT, N2R, READS_PARSED
-    N2S, R2N, ANNOTATED_FASTA_DATA, SUCCESSOR_DICT, N2R, READS_PARSED = aux['n2s'], aux['r2n'], aux['annotated_fasta_data'], aux['successor_dict'], aux['n2r'], set()
+    global R2S, R2N, SUCCESSOR_DICT, N2R, READS_PARSED
+    R2S, R2N, SUCCESSOR_DICT, N2R, READS_PARSED = aux['r2s'], aux['r2n'], aux['successor_dict'], aux['n2r'], set()
 
     for c_n_id in sorted(N2R.keys()):
         if c_n_id % 2 != 0: continue # Skip all virtual nodes

@@ -1,24 +1,142 @@
 run:
   preprocessing:
-    - 'mouse'
-    - 'chm13'
-    - 'maize-50p'
-    - 'maize'
-  gnnome_decoding:
+    source: 'hifiasm'
+    genomes: 
+      - 'chm13'
+  generate_baseline:
+    source: 'hifiasm'
+    genomes:
+      - 'chm13'
   postprocessing:
+    genomes:
+      - 'chm13'
 
-postprocessing:
-  walk_valid_p: 0.02
-  use_telomere_info : true
-  dfs_penalty: null # None, ol_len or ol_sim
-  walk_var: 'telomere' # default or telomere
+# postprocessing:
+#   walk_valid_p: 0.02
+#   use_telomere_info : true
+#   dfs_penalty: null # None, ol_len or ol_sim
+#   walk_var: 'telomere' # default or telomere
 
-misc:
-  paths:
-    model: '/home/stumanuel/GAP/misc/default_best.pt'
-    seqtk: '/home/stumanuel/GitHub/seqtk/seqtk'
-    minigraph: '/home/stumanuel/GitHub/minigraph/minigraph'
-    paftools: '/home/stumanuel/GitHub/minimap2/misc/paftools.js'
+# misc:
+#   paths:
+#     model: '/home/stumanuel/GAP/misc/default_best.pt'
+#     seqtk: '/home/stumanuel/GitHub/seqtk/seqtk'
+#     minigraph: '/home/stumanuel/GitHub/minigraph/minigraph'
+#     paftools: '/home/stumanuel/GitHub/minimap2/misc/paftools.js'
+
+# genome_info:
+#   arab:
+#     telo_motifs:
+#       - 'TTTAGGG'
+#       - 'CCCTAAA'
+#     paths:
+#       ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/arab/arab.ec.fa'
+#       gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/arab/arab.bp.raw.r_utg.gfa'
+#       baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/arab/'
+#       graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/arab/'
+#       n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/arab/arab_n2s.pkl'
+#       paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/arab/arab.ovlp.paf'
+#       paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/arab/arab_paf_data.pkl'
+#       reads: '/mnt/sod2-project/csb4/wgs/lovro/sequencing_data/arabidopsis_new/PacBio_HiFi/CRR302668_p0.22.fastq.gz'
+#       ref: '/mnt/sod2-project/csb4/wgs/lovro/gnnome_assembly/references/arabidopsis/latest/GWHBDNP00000000.1.genome.fasta'
+#       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/arab/arab_r2n.pkl'
+#       r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/arab/arab_r2s.pkl'
+#       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/arab/'
+#       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/arab/walks.pkl' # Ensure this aligns with baseline
+#   chicken:
+#     telo_motifs:
+#       - 'TTAGGG'
+#       - 'CCCTAA'
+#     paths:
+#       ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/chicken/chicken.ec.fa'
+#       gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/chicken/chicken.bp.raw.r_utg.gfa'
+#       baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/chicken/'
+#       graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/chicken/'
+#       n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/chicken/chicken_n2s.pkl'
+#       paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/chicken/chicken.ovlp.paf'
+#       paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/chicken/chicken_paf_data.pkl'
+#       reads: '/mnt/sod2-project/csb4/wgs/lovro/sequencing_data/gallus_gallus/HiFi/mat_0.5_30x.fastq.gz'
+#       ref: '/mnt/sod2-project/csb4/wgs/lovro/gnnome_assembly/references/bGalGal1/maternal/GCF_016699485.2_bGalGal1.mat.broiler.GRCg7b_genomic.fna'
+#       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/chicken/chicken_r2n.pkl'
+#       r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/chicken/chicken_r2s.pkl'
+#       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/chicken/'
+#       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/chicken/walks.pkl' # Ensure this aligns with baseline
+#   chm13:
+#     telo_motifs:
+#       - 'TTAGGG'
+#       - 'CCCTAA'
+#     paths:
+#       ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/chm13/chm13.ec.fa'
+#       gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/chm13/chm13.bp.raw.r_utg.gfa'
+#       baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/chm13/'
+#       graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/chm13/'
+#       n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/chm13/chm13_n2s.pkl'
+#       paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/chm13/chm13.ovlp.paf'
+#       paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/chm13/chm13_paf_data.pkl'
+#       reads: '/mnt/sod2-project/csb4/wgs/lovro/sequencing_data/CHM13/PacBio_HiFi/SRR11292120_3_subreads.fastq.gz'
+#       ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/chm13_v11/chm13_full_v1_1.fasta'
+#       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/chm13/chm13_r2n.pkl'
+#       r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/chm13/chm13_r2s.pkl'
+#       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/chm13/'
+#       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/chm13/walks.pkl' # Ensure this aligns with baseline
+#   maize:
+#     telo_motifs:
+#       - 'TTTAGGG'
+#       - 'CCCTAAA'
+#     paths:
+#       ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/maize/maize.ec.fa'
+#       gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/maize/maize.bp.raw.r_utg.gfa'
+#       baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/maize/'
+#       graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/maize/'
+#       n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/maize/maize_n2s.pkl'
+#       paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/maize/maize.ovlp.paf'
+#       paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/maize/maize_paf_data.pkl'
+#       reads: '/mnt/sod2-project/csb4/wgs/lovro/sequencing_data/zmays_Mo17/HiFi/zmays_Mo17-HiFi.fastq.gz'
+#       ref: '/mnt/sod2-project/csb4/wgs/lovro/gnnome_assembly/references/zmays_Mo17/zmays_Mo17.fasta'
+#       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/maize/maize_r2n.pkl'
+#       r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/maize/maize_r2s.pkl'
+#       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/maize/'
+#       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/maize/walks.pkl' # Ensure this aligns with baseline
+#   maize-50p:
+#     telo_motifs:
+#       - 'TTTAGGG'
+#       - 'CCCTAAA'
+#     paths:
+#       ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/maize-50p/maize-50p.ec.fa'
+#       gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/maize-50p/maize-50p.bp.raw.r_utg.gfa'
+#       baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/maize-50p/'
+#       graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/maize-50p/'
+#       n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/maize-50p/maize-50p_n2s.pkl'
+#       paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/maize-50p/maize-50p.ovlp.paf'
+#       paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/maize-50p/maize-50p_paf_data.pkl'
+#       reads: '/mnt/sod2-project/csb4/wgs/lovro/sequencing_data/zmays_Mo17/HiFi/zmays_Mo17-HiFi_p0.5.fastq.gz'
+#       ref: '/mnt/sod2-project/csb4/wgs/lovro/gnnome_assembly/references/zmays_Mo17/zmays_Mo17.fasta'
+#       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/maize-50p/maize-50p_r2n.pkl'
+#       r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/maize-50p/maize-50p_r2s.pkl'
+#       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/maize-50p/'
+#       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/maize-50p/walks.pkl' # Ensure this aligns with baseline
+#   mouse:
+#     telo_motifs:
+#       - 'TTAGGG'
+#       - 'CCCTAA'
+#     paths:
+#       ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/mouse/mouse.ec.fa'
+#       gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/mouse/mouse.bp.raw.r_utg.gfa'
+#       baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/mouse/'
+#       graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/mouse/'
+#       n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/mouse/mouse_n2s.pkl'
+#       paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/mouse/mouse.ovlp.paf'
+#       paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/mouse/mouse_paf_data.pkl'
+#       reads: '/mnt/sod2-project/csb4/wgs/lovro/sequencing_data/mus_musculus/SRR11606870.fastq'
+#       ref: '/mnt/sod2-project/csb4/wgs/lovro/gnnome_assembly/references/mus_musculus/mmusculus_GRCm39.fna'
+#       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/mouse/mouse_r2n.pkl'
+#       r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/mouse/mouse_r2s.pkl'
+#       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/mouse/'
+#       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/mouse/walks.pkl' # Ensure this aligns with baseline
+
+
+
+
 
 genome_info:
   arab:
@@ -26,105 +144,113 @@ genome_info:
       - 'TTTAGGG'
       - 'CCCTAAA'
     paths:
-      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/arab.bp.raw.r_utg.gfa'
-      gnnome_save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/res/default/arab/'
-      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/graphs/default/'
-      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_arab_n2s.pkl'
-      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/arab.ovlp.paf'
-      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/arab_paf_data.pkl'
+      ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/arab/arab.ec.fa'
+      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/arab/arab.bp.p_ctg.gfa'
+      baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/arab/'
+      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/arab/'
+      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/arab/arab_n2s.pkl'
+      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/arab/arab.ovlp.paf'
+      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/arab/arab_paf_data.pkl'
       reads: '/mnt/sod2-project/csb4/wgs/lovro/sequencing_data/arabidopsis_new/PacBio_HiFi/CRR302668_p0.22.fastq.gz'
-      reads_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/arab_fasta_data.pkl'
       ref: '/mnt/sod2-project/csb4/wgs/lovro/gnnome_assembly/references/arabidopsis/latest/GWHBDNP00000000.1.genome.fasta'
-      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_arab_r2n.pkl'
-      save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/res/postprocessed/arab/'
-      walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/res/default/arab/walks.pkl' # If using gnnome, ensure that this aligns with gnnome_save
+      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/arab/arab_r2n.pkl'
+      r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/arab/arab_r2s.pkl'
+      save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/arab/'
+      walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/arab/walks.pkl' # Ensure this aligns with baseline
   chicken:
     telo_motifs:
       - 'TTAGGG'
       - 'CCCTAA'
     paths:
-      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/chicken.bp.raw.r_utg.gfa'
-      gnnome_save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/res/default/chicken/'
-      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/graphs/default/'
-      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_chicken_n2s.pkl'
-      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/chicken.ovlp.paf'
-      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/chicken_paf_data.pkl'
+      ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/chicken/chicken.ec.fa'
+      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/chicken/chicken.bp.p_ctg.gfa'
+      baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/chicken/'
+      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/chicken/'
+      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/chicken/chicken_n2s.pkl'
+      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/chicken/chicken.ovlp.paf'
+      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/chicken/chicken_paf_data.pkl'
       reads: '/mnt/sod2-project/csb4/wgs/lovro/sequencing_data/gallus_gallus/HiFi/mat_0.5_30x.fastq.gz'
-      reads_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/chicken_fasta_data.pkl'
       ref: '/mnt/sod2-project/csb4/wgs/lovro/gnnome_assembly/references/bGalGal1/maternal/GCF_016699485.2_bGalGal1.mat.broiler.GRCg7b_genomic.fna'
-      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_chicken_r2n.pkl'
-      save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/res/postprocessed/chicken/'
-      walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/res/default/chicken/walks.pkl' 
+      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/chicken/chicken_r2n.pkl'
+      r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/chicken/chicken_r2s.pkl'
+      save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/chicken/'
+      walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/chicken/walks.pkl' # Ensure this aligns with baseline
   chm13:
     telo_motifs:
       - 'TTAGGG'
       - 'CCCTAA'
     paths:
-      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/chm13.bp.raw.r_utg.gfa'
-      gnnome_save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/res/default/chm13/'
-      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/graphs/default/'
-      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_chm13_n2s.pkl'
-      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/chm13.ovlp.paf'
-      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/chm13_paf_data.pkl'
+      ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/chm13/chm13.ec.fa'
+      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/chm13/chm13.bp.p_ctg.gfa'
+      baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/chm13/'
+      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/chm13/'
+      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/chm13/chm13_n2s.pkl'
+      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/chm13/chm13.ovlp.paf'
+      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/chm13/chm13_paf_data.pkl'
       reads: '/mnt/sod2-project/csb4/wgs/lovro/sequencing_data/CHM13/PacBio_HiFi/SRR11292120_3_subreads.fastq.gz'
-      reads_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/chm13_fasta_data.pkl'
       ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/chm13_v11/chm13_full_v1_1.fasta'
-      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_chm13_r2n.pkl'
-      save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/res/postprocessed/chm13/'
-      walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/res/default/chm13/walks.pkl'
+      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/chm13/chm13_r2n.pkl'
+      r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/chm13/chm13_r2s.pkl'
+      save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/chm13/'
+      walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/chm13/walks.pkl' # Ensure this aligns with baseline
   maize:
     telo_motifs:
       - 'TTTAGGG'
       - 'CCCTAAA'
     paths:
-      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/maize.bp.raw.r_utg.gfa'
-      gnnome_save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/res/default/maize/'
-      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/graphs/default/'
-      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_maize_n2s.pkl'
-      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/maize.ovlp.paf'
-      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/maize_paf_data.pkl'
+      ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/maize/maize.ec.fa'
+      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/maize/maize.bp.p_ctg.gfa'
+      baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/maize/'
+      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/maize/'
+      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/maize/maize_n2s.pkl'
+      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/maize/maize.ovlp.paf'
+      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/maize/maize_paf_data.pkl'
       reads: '/mnt/sod2-project/csb4/wgs/lovro/sequencing_data/zmays_Mo17/HiFi/zmays_Mo17-HiFi.fastq.gz'
-      reads_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/maize_fasta_data.pkl'
       ref: '/mnt/sod2-project/csb4/wgs/lovro/gnnome_assembly/references/zmays_Mo17/zmays_Mo17.fasta'
-      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_maize_r2n.pkl'
-      save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/res/postprocessed/maize/'
-      walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/res/default/maize/walks.pkl'
+      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/maize/maize_r2n.pkl'
+      r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/maize/maize_r2s.pkl'
+      save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/maize/'
+      walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/maize/walks.pkl' # Ensure this aligns with baseline
   maize-50p:
     telo_motifs:
       - 'TTTAGGG'
       - 'CCCTAAA'
-    walk_valid_p:: 0.001
     paths:
-      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/maize-50p.bp.raw.r_utg.gfa'
-      gnnome_save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/res/default/maize-50p/'
-      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/graphs/default/'
-      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_maize-50p_n2s.pkl'
-      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/maize-50p.ovlp.paf'
-      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/maize-50p_paf_data.pkl'
+      ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/maize-50p/maize-50p.ec.fa'
+      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/maize-50p/maize-50p.bp.p_ctg.gfa'
+      baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/maize-50p/'
+      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/maize-50p/'
+      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/maize-50p/maize-50p_n2s.pkl'
+      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/maize-50p/maize-50p.ovlp.paf'
+      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/maize-50p/maize-50p_paf_data.pkl'
       reads: '/mnt/sod2-project/csb4/wgs/lovro/sequencing_data/zmays_Mo17/HiFi/zmays_Mo17-HiFi_p0.5.fastq.gz'
-      reads_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/maize-50p_fasta_data.pkl'
       ref: '/mnt/sod2-project/csb4/wgs/lovro/gnnome_assembly/references/zmays_Mo17/zmays_Mo17.fasta'
-      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_maize-50p_r2n.pkl'
-      save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/res/postprocessed/maize-50p/'
-      walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/res/default/maize-50p/walks.pkl'
+      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/maize-50p/maize-50p_r2n.pkl'
+      r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/maize-50p/maize-50p_r2s.pkl'
+      save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/maize-50p/'
+      walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/maize-50p/walks.pkl' # Ensure this aligns with baseline
   mouse:
     telo_motifs:
       - 'TTAGGG'
       - 'CCCTAA'
-    walk_valid_p:: 0.001
     paths:
-      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/mouse.bp.raw.r_utg.gfa'
-      gnnome_save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/res/default/mouse/'
-      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/graphs/default/'
-      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_mouse_n2s.pkl'
-      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/datasets/mouse.ovlp.paf'
-      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/mouse_paf_data.pkl'
+      ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/mouse/mouse.ec.fa'
+      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/mouse/mouse.bp.p_ctg.gfa'
+      baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/mouse/'
+      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/mouse/'
+      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/mouse/mouse_n2s.pkl'
+      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/mouse/mouse.ovlp.paf'
+      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/mouse/mouse_paf_data.pkl'
       reads: '/mnt/sod2-project/csb4/wgs/lovro/sequencing_data/mus_musculus/SRR11606870.fastq'
-      reads_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/mouse_fasta_data.pkl'
       ref: '/mnt/sod2-project/csb4/wgs/lovro/gnnome_assembly/references/mus_musculus/mmusculus_GRCm39.fna'
-      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/pkl/default_mouse_r2n.pkl'
-      save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/res/postprocessed/mouse/'
-      walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/paf-enhancement/res/default/mouse/walks.pkl'
+      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/mouse/mouse_r2n.pkl'
+      r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/mouse/mouse_r2s.pkl'
+      save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/mouse/'
+      walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/mouse/walks.pkl' # Ensure this aligns with baseline
+
+
+
+
 
 # GNNome's model configs for decoding. Recommended not to touch these.
 gnnome:

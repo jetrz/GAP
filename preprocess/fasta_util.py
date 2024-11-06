@@ -5,14 +5,10 @@ from multiprocessing import Pool
 from tqdm import tqdm
 
 def parse_read(read):
-    description = read.description.split()
-    id = description[0]
     seqs = (str(read.seq), str(Seq(read.seq).reverse_complement()))
+    return read.id, seqs
 
-    return id, seqs
-
-def parse_fasta(path):
-    print("Parsing FASTA...")
+def parse_ec_fasta(path):
     if path.endswith('gz'):
         if path.endswith('fasta.gz') or path.endswith('fna.gz') or path.endswith('fa.gz'):
             filetype = 'fasta'

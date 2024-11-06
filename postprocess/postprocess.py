@@ -1,4 +1,4 @@
-import dgl, os, pickle, random, subprocess, yaml
+import dgl, os, pickle, random, subprocess
 from Bio import Seq, SeqIO
 from collections import defaultdict
 from copy import deepcopy
@@ -212,7 +212,7 @@ def chop_walks_seqtk(old_walks, n2s, graph, rep1, rep2, seqtk_path):
     print(f"Chopping complete! n Old Walks: {len(old_walks)}, n New Walks: {len(new_walks)}, n +ve telomeric regions: {rep1_count}, n -ve telomeric regions: {rep2_count}")
     return new_walks, telo_ref
 
-def add_ghosts(old_walks, paf_data, r2n, fasta_data, n2s, old_graph, walk_valid_p):
+def add_ghosts(old_walks, paf_data, r2n, r2s, n2s, old_graph, walk_valid_p):
     """
     Adds nodes and edges from the PAF and graph.
 
@@ -307,7 +307,7 @@ def add_ghosts(old_walks, paf_data, r2n, fasta_data, n2s, old_graph, walk_valid_
                     ol_sim=n[3]
                 ))
 
-            seq = fasta_data[read_id][0] if orient == '+' else fasta_data[read_id][1]
+            seq = r2s[read_id][0] if orient == '+' else r2s[read_id][1]
             n2s_ghost[n_id] = seq
             n_id += 1
             added_nodes_count += 1
@@ -824,12 +824,12 @@ def postprocess(name, hyperparams, paths):
     print(f"Loading files... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     with open(paths['walks'], 'rb') as f:
         walks = pickle.load(f)
-    with open(paths['reads_processed'], 'rb') as f:
-        fasta_data = pickle.load(f)
     with open(paths['n2s'], 'rb') as f:
         n2s = pickle.load(f)
     with open(paths['r2n'], 'rb') as f:
         r2n = pickle.load(f)
+    with open(paths['r2s'], 'rb') as f:
+        r2s = pickle.load(f)
     with open(paths['paf_processed'], 'rb') as f:
         paf_data = pickle.load(f)
     old_graph = dgl.load_graphs(paths['graph']+f'{name}.dgl')[0][0]
@@ -846,7 +846,7 @@ def postprocess(name, hyperparams, paths):
         old_walks=walks,
         paf_data=paf_data,
         r2n=r2n,
-        fasta_data=fasta_data,
+        r2s=r2s,
         n2s=n2s,
         old_graph=old_graph,
         walk_valid_p=hyperparams['walk_valid_p']
@@ -877,11 +877,9 @@ def postprocess(name, hyperparams, paths):
     print(f"Run finished! (Time: {timedelta_to_str(datetime.now() - time_start)})")
     return
 
-def run_postprocessing(genomes):
-    with open("config.yaml") as file:
-        config = yaml.safe_load(file)
-        postprocessing_config = config['postprocessing']
-    
+def run_postprocessing(config):
+    postprocessing_config = config['postprocessing']
+    genomes = config['run']['postprocessing']['genomes']
     for genome in genomes:
         postprocessing_config['telo_motif'] = config['genome_info'][genome]['telo_motifs']
         paths = config['genome_info'][genome]['paths']

@@ -26,7 +26,7 @@ def graph_to_successor_dict(g):
     return successors_dict
 
 def parse_raw_gfa(gfa_path):
-    print("Reading GFA...")
+    print("Loading GFA...")
     with open(gfa_path) as f:
         rows = f.readlines()
 
@@ -38,6 +38,7 @@ def parse_raw_gfa(gfa_path):
     edge_ids, prefix_lengths, overlap_lengths, overlap_similarities = {}, {}, {}, {}
     edge_index = [[],[]]
 
+    print("Parsing rows...")
     r_ind = 0
     while r_ind < n_rows:
         row = rows[r_ind].strip().split()
@@ -141,21 +142,66 @@ def parse_raw_gfa(gfa_path):
     # Why is this the case? Is it because if there is even a single 'A' file in the .gfa, means the format is all 'S' to 'A' lines?
     if len(r2n2) != 0: r2n = r2n2
 
-    print("Calculating similarities...")
     overlap_similarities = calculate_similarities(edge_ids, n2s, overlap_lengths)
 
     return edge_ids, edge_index, n2s, n2r, r2n, read_lengths, prefix_lengths, overlap_lengths, overlap_similarities
 
-def parse_final_gfa(gfa_path):
-    pass
+def parse_final_gfa(gfa_path, r2s):
+    print("Loading GFA...")
+    with open(gfa_path) as f:
+        rows = f.readlines()
 
-def preprocess_gfa(gfa_path, source):
+    print("Parsing rows...")
+    contigs, unique_reads = defaultdict(list), set()
+    for row in rows:
+        row = row.strip().split()
+        if row[0] != "A": continue
+        contigs[row[1]].append(row)
+        unique_reads.add(row[4])
+
+    n_id, e_id = 0, 0
+    n2r, n2s, r2n = {}, {}, {}
+    edge_ref, read_lens, prefix_lens, ol_lens, ol_sims = {}, {}, {}, {}, {}
+    edge_index = [[],[]]
+    for read in unique_reads:
+        real_id, virt_id = n_id, n_id+1
+        n_id += 2
+        n2r[real_id] = read; n2r[virt_id] = read
+        n2s[real_id] = r2s[read][0]; n2s[virt_id] = r2s[read][1]
+        read_lens[real_id] = len(r2s[read][0]); read_lens[virt_id] = len(r2s[read][1])
+        r2n[read] = (real_id, virt_id)
+        
+    for contig, reads in contigs.items():
+        reads = sorted(reads, key=lambda x:int(x[2])) # sort by order in contig
+        for i in range(len(reads)-1):
+            curr_row, next_row = reads[i], reads[i+1]
+            curr_read, next_read = curr_row[4], next_row[4]
+            curr_node = r2n[curr_read][0] if curr_row[3] == "+" else r2n[curr_read][1]
+            next_node = r2n[next_read][0] if next_row[3] == "+" else r2n[next_read][1]
+
+            # In hifiasm's graph, the same edge (read1 -> read2) can appear in multiple contigs, even though in GNNome each read is unique to its node.
+            # This shouldn't be a problem, but just leaving a note here. Additionally, I checked that these edges are duplicated, they all have the same prefix length.
+            if (curr_node, next_node) in edge_ref: continue
+
+            edge_index[0].append(curr_node); edge_index[1].append(next_node)
+            edge_ref[(curr_node, next_node)] = e_id
+            ol_lens[(curr_node, next_node)] = 0
+            prefix_lens[(curr_node, next_node)] = int(next_row[2])-int(curr_row[2])
+            ol_sims[(curr_node, next_node)] = 1
+            e_id += 1
+
+    return edge_ref, edge_index, n2s, n2r, r2n, read_lens, prefix_lens, ol_lens, ol_sims
+
+def preprocess_gfa(gfa_path, aux, source):
     if source == 'gnnome':
         edge_ref, edge_index, n2s, n2r, r2n, read_lens, prefix_lens, ol_lens, ol_sims = parse_raw_gfa(gfa_path)
     elif source == 'hifiasm':
-        edge_ref, edge_index, n2s, n2r, r2n, read_lens, prefix_lens, ol_lens, ol_sims = parse_final_gfa(gfa_path)
+        edge_ref, edge_index, n2s, n2r, r2n, read_lens, prefix_lens, ol_lens, ol_sims = parse_final_gfa(gfa_path, aux['r2s'])
     else:
         raise ValueError("Invalid source!")
+    
+    assert len(edge_ref) == len(edge_index[0]) == len(edge_index[1]) == len(prefix_lens) == len(ol_lens) == len(ol_sims), "Length of edge features are not equal!"
+    assert len(n2s) == len(n2r) == len(read_lens), "Length of node features are not equal!"
     
     n_nodes, n_edges = len(n2s), len(edge_ref)
     g = Data(N_ID=torch.tensor([i for i in range(n_nodes)]), E_ID=torch.tensor([i for i in range(n_edges)]), edge_index=torch.tensor(edge_index))
@@ -173,13 +219,11 @@ def preprocess_gfa(gfa_path, source):
     g['overlap_length'] = torch.tensor(ol_lens_list)
     g['overlap_similarity'] = torch.tensor(ol_sims_list)
 
-    aux = {
-        'r2n' : r2n,
-        'n2s' : n2s,
-        'n2r' : n2r,
-        'node_attrs' : node_attrs,
-        'edge_attrs' : edge_attrs,
-        'successor_dict' : graph_to_successor_dict(g)
-    }
+    aux['r2n'] = r2n
+    aux['n2s'] = n2s
+    aux['n2r'] = n2r
+    aux['node_attrs'] = node_attrs
+    aux['edge_attrs'] = edge_attrs
+    aux['successor_dict'] = graph_to_successor_dict(g)
 
     return g, aux
