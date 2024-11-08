@@ -51,3 +51,20 @@ def asm_metrics(contigs, save_path, ref_path, minigraph_path, paftools_path):
     with open(report) as f:
         report = f.read()
         print(report)
+
+def print_ascii():
+    """hehe"""
+    ascii = '''
+    \n
+    .·´¯`·. ·´¯·.
+    __|__
+    | |__ ╲╲    ╲
+    |ロ |  ╲╲ (\~/) 
+    |ロ |   ╲╲( •ω•)    Running GAP...
+    |ロ |    ╲⊂   づ
+    |ロ |     ╲╲ ⊃⊃╲
+    |ロ |___   ╲|___  ╲|___
+    \n
+    '''
+    print(ascii)
+    

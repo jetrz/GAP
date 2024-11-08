@@ -824,6 +824,10 @@ def get_contigs(old_walks, new_walks, adj_list, n2s, n2s_ghost, g):
 
 def postprocess(name, hyperparams, paths):
     """
+    (\(\        \|/        /)/)
+    (  ^.^)     -o-     (^.^  )
+    o_(")(")    /|\    (")(")_o
+
     Performs scaffolding on GNNome's walks using information from PAF, GFA, and telomeres.
     Currently, only uses info from 1-hop neighbourhood of original graph. Any two walks are at most connected by a single ghost node. Also, all added ghost nodes must have at least one incoming and one outgoing edge to a walk.
     
@@ -905,4 +909,8 @@ def run_postprocessing(config):
         postprocessing_config['telo_motif'] = config['genome_info'][genome]['telo_motifs']
         paths = config['genome_info'][genome]['paths']
         paths.update(config['misc']['paths'])
-        postprocess(genome, hyperparams=postprocessing_config, paths=paths)
+
+        # postprocess(genome, hyperparams=postprocessing_config, paths=paths)
+        for w in [0.005, 0.0025, 0.001]:
+            postprocessing_config['walk_valid_p'] = w
+            postprocess(genome, hyperparams=postprocessing_config, paths=paths)
