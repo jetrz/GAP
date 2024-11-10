@@ -13,7 +13,7 @@ def pyg_to_dgl(g, node_attrs, edge_attrs):
         return x
     
     u, v = g.edge_index
-    dgl_g = dgl.graph((u, v))
+    dgl_g = dgl.graph((u, v), num_nodes=g[node_attrs[0]].shape[0])
 
     # Adding node features
     for attr in node_attrs:

@@ -200,9 +200,6 @@ def preprocess_gfa(gfa_path, aux, source):
     else:
         raise ValueError("Invalid source!")
     
-    assert len(edge_ref) == len(edge_index[0]) == len(edge_index[1]) == len(prefix_lens) == len(ol_lens) == len(ol_sims), "Length of edge features are not equal!"
-    assert len(n2s) == len(n2r) == len(read_lens), "Length of node features are not equal!"
-    
     n_nodes, n_edges = len(n2s), len(edge_ref)
     g = Data(N_ID=torch.tensor([i for i in range(n_nodes)]), E_ID=torch.tensor([i for i in range(n_edges)]), edge_index=torch.tensor(edge_index))
     
@@ -218,6 +215,9 @@ def preprocess_gfa(gfa_path, aux, source):
     g['prefix_length'] = torch.tensor(prefix_lens_list)
     g['overlap_length'] = torch.tensor(ol_lens_list)
     g['overlap_similarity'] = torch.tensor(ol_sims_list)
+
+    assert g.N_ID.shape[0] == g.read_length.shape[0], "Length of node features are not equal!"
+    assert g.E_ID.shape[0] == g.edge_index.shape[1] == g.prefix_length.shape[0] == g.overlap_length.shape[0] == g.overlap_similarity.shape[0], "Length of edge features are not equal!"
 
     aux['r2n'] = r2n
     aux['n2s'] = n2s

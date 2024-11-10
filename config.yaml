@@ -1,19 +1,18 @@
 run:
   preprocessing:
     source: 'hifiasm'
-    genomes: ~
+    genomes:
+      - 'hg002_m'
   generate_baseline:
     source: 'hifiasm'
-    genomes: ~
-  postprocessing:
     genomes:
-      - 'arab'
-      - 'chicken'
-      - 'chm13'
+      - 'hg002_m'
+  postprocessing:
+    genomes: ~
 
 postprocessing:
   walk_valid_p: 0.02
-  use_telomere_info : false
+  use_telomere_info : true
   dfs_penalty: null # None, ol_len or ol_sim
   walk_var: 'telomere' # default or telomere
 
