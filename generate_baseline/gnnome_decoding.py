@@ -251,8 +251,9 @@ def get_contigs_greedy(g, succs, preds, edges, nb_paths=50, len_threshold=20):
     return all_contigs
 
 def run_greedy_both_ways(src, dst, scores, succs, edges, visited):
-    walk_f, visited_f, sumLogProb_f  = greedy(dst, scores, succs, edges, visited, backwards=False)
-    walk_b, visited_b, sumLogProb_b = greedy(src, scores, succs, edges, visited | visited_f, backwards=True)
+    temp_visited = visited | {src, src^1, dst, dst^1}
+    walk_f, visited_f, sumLogProb_f  = greedy(dst, scores, succs, edges, temp_visited, backwards=False)
+    walk_b, visited_b, sumLogProb_b = greedy(src, scores, succs, edges, temp_visited | visited_f, backwards=True)
     return walk_f, walk_b, visited_f, visited_b, sumLogProb_f, sumLogProb_b
 
 def greedy(start, scores, neighbors, edges, visited_old, backwards=False):
