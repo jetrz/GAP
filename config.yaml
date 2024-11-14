@@ -11,7 +11,7 @@ run:
 
 postprocessing:
   walk_valid_p: 0.0025
-  use_telomere_info : true
+  use_telomere_info : false
   dfs_penalty: null # None, ol_len or ol_sim
   walk_var: 'telomere' # default or telomere
 
@@ -141,7 +141,7 @@ misc:
 #       n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/hg002_30x_p/hg002_30x_p_n2s.pkl'
 #       paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_30x_p/hg002_30x_p.ovlp.paf'
 #       paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/hg002_30x_p/hg002_30x_p_paf_data.pkl'
-#       ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_30x_v101/hg002_30xv1.0.1_PATERNAL.fasta'
+#       ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/hg002v1.0.1_PATERNAL.fasta'
 #       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/hg002_30x_p/hg002_30x_p_r2n.pkl'
 #       r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/hg002_30x_p/hg002_30x_p_r2s.pkl'
 #       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/hg002_30x_p/'
@@ -158,7 +158,7 @@ misc:
 #       n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/hg002_30x_m/hg002_30x_m_n2s.pkl'
 #       paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_30x_m/hg002_30x_m.ovlp.paf'
 #       paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/hg002_30x_m/hg002_30x_m_paf_data.pkl'
-#       ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_30x_v101/hg002_30xv1.0.1_MATERNAL.fasta'
+#       ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/hg002v1.0.1_MATERNAL.fasta'
 #       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/hg002_30x_m/hg002_30x_m_r2n.pkl'
 #       r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/hg002_30x_m/hg002_30x_m_r2s.pkl'
 #       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/hg002_30x_m/'
@@ -352,7 +352,7 @@ genome_info:
       n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_30x_p/hg002_30x_p_n2s.pkl'
       paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_30x_p/hg002_30x_p.ovlp.paf'
       paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_30x_p/hg002_30x_p_paf_data.pkl'
-      ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_30x_v101/hg002_30xv1.0.1_PATERNAL.fasta'
+      ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/hg002v1.0.1_PATERNAL.fasta'
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_30x_p/hg002_30x_p_r2n.pkl'
       r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_30x_p/hg002_30x_p_r2s.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/hg002_30x_p/'
@@ -369,7 +369,7 @@ genome_info:
       n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_30x_m/hg002_30x_m_n2s.pkl'
       paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_30x_m/hg002_30x_m.ovlp.paf'
       paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_30x_m/hg002_30x_m_paf_data.pkl'
-      ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_30x_v101/hg002_30xv1.0.1_MATERNAL.fasta'
+      ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/hg002v1.0.1_MATERNAL.fasta'
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_30x_m/hg002_30x_m_r2n.pkl'
       r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_30x_m/hg002_30x_m_r2s.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/hg002_30x_m/'
