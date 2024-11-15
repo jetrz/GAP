@@ -20,18 +20,18 @@ def run_preprocessing(config):
         print(f"Processing Error Corrected Reads FASTA... (Time: {timedelta_to_str(datetime.now() - time_start)})")
         r2s = parse_ec_fasta(genome_info['paths']['ec_reads'])
         aux['r2s'] = r2s
-        with open(genome_info['paths']['r2s'], "wb") as p:
-            pickle.dump(r2s, p)
+        # with open(genome_info['paths']['r2s'], "wb") as p:
+        #     pickle.dump(r2s, p)
         
         print(f"Processing GFA... (Time: {timedelta_to_str(datetime.now() - time_start)})")
         g, aux = preprocess_gfa(gfa_path, aux, source)
-        with open(genome_info['paths']['n2s'], "wb") as p:
-            pickle.dump(aux['n2s'], p)
-        with open(genome_info['paths']['r2n'], "wb") as p:
-            pickle.dump(aux['r2n'], p)
-        torch.save(g, genome_info['paths']['graph']+f'{genome}.pt')
-        dgl_g = pyg_to_dgl(g, aux['node_attrs'], aux['edge_attrs'])
-        dgl.save_graphs(genome_info['paths']['graph']+f'{genome}.dgl', [dgl_g])
+        # with open(genome_info['paths']['n2s'], "wb") as p:
+        #     pickle.dump(aux['n2s'], p)
+        # with open(genome_info['paths']['r2n'], "wb") as p:
+        #     pickle.dump(aux['r2n'], p)
+        # torch.save(g, genome_info['paths']['graph']+f'{genome}.pt')
+        # dgl_g = pyg_to_dgl(g, aux['node_attrs'], aux['edge_attrs'])
+        # dgl.save_graphs(genome_info['paths']['graph']+f'{genome}.dgl', [dgl_g])
 
         print(f"Processing PAF... (Time: {timedelta_to_str(datetime.now() - time_start)})")
         paf_data = parse_paf(genome_info['paths']['paf'], aux)

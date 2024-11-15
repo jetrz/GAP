@@ -5,7 +5,7 @@ import pickle
 
 from misc.utils import asm_metrics, timedelta_to_str
 
-def hifiasm_decoding(paths):
+def hifiasm_decoding(paths, r2s, r2n):
     time_start = datetime.now()
 
     print(f"Loading files... (Time: {timedelta_to_str(datetime.now() - time_start)})")
@@ -17,10 +17,10 @@ def hifiasm_decoding(paths):
             if row[0] != "A": continue
             c2r[row[1]].append(row)
 
-    with open(paths['r2s'], 'rb') as f:
-        r2s = pickle.load(f)
-    with open(paths['r2n'], 'rb') as f:
-        r2n = pickle.load(f)
+    # with open(paths['r2s'], 'rb') as f:
+    #     r2s = pickle.load(f)
+    # with open(paths['r2n'], 'rb') as f:
+    #     r2n = pickle.load(f)
 
     print(f"Generating contigs... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     contigs, walks = [], []

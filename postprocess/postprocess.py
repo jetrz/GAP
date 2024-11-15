@@ -4,7 +4,9 @@ from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
 
-from misc.utils import asm_metrics, timedelta_to_str
+from preprocess.gfa_util import preprocess_gfa
+from preprocess.fasta_util import parse_ec_fasta
+from misc.utils import asm_metrics, timedelta_to_str, pyg_to_dgl
 
 class Edge():
     def __init__(self, new_src_nid, new_dst_nid, old_src_nid, old_dst_nid, prefix_len, ol_len, ol_sim):
@@ -822,7 +824,7 @@ def get_contigs(old_walks, new_walks, adj_list, n2s, n2s_ghost, g):
 
     return contigs
 
-def postprocess(name, hyperparams, paths):
+def postprocess(name, hyperparams, paths, n2s, r2n, r2s, old_graph):
     """
     (\(\        \|/        /)/)
     (  ^.^)     -o-     (^.^  )
@@ -849,15 +851,15 @@ def postprocess(name, hyperparams, paths):
     print(f"Loading files... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     with open(paths['walks'], 'rb') as f:
         walks = pickle.load(f)
-    with open(paths['n2s'], 'rb') as f:
-        n2s = pickle.load(f)
-    with open(paths['r2n'], 'rb') as f:
-        r2n = pickle.load(f)
-    with open(paths['r2s'], 'rb') as f:
-        r2s = pickle.load(f)
+    # with open(paths['n2s'], 'rb') as f:
+    #     n2s = pickle.load(f)
+    # with open(paths['r2n'], 'rb') as f:
+    #     r2n = pickle.load(f)
+    # with open(paths['r2s'], 'rb') as f:
+    #     r2s = pickle.load(f)
     with open(paths['paf_processed'], 'rb') as f:
         paf_data = pickle.load(f)
-    old_graph = dgl.load_graphs(paths['graph']+f'{name}.dgl')[0][0]
+    # old_graph = dgl.load_graphs(paths['graph']+f'{name}.dgl')[0][0]
 
     print(f"Chopping old walks... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     if hyperparams['use_telomere_info']:
@@ -910,7 +912,16 @@ def run_postprocessing(config):
         paths = config['genome_info'][genome]['paths']
         paths.update(config['misc']['paths'])
 
-        # postprocess(genome, hyperparams=postprocessing_config, paths=paths)
-        for w in [0.005, 0.0025, 0.001]:
-            postprocessing_config['walk_valid_p'] = w
-            postprocess(genome, hyperparams=postprocessing_config, paths=paths)
+        r2s = parse_ec_fasta(paths['ec_reads'])
+        g, aux = preprocess_gfa(paths['gfa'], {'r2s':r2s}, config['run']['generate_baseline']['source'])
+        dgl_g = pyg_to_dgl(g, aux['node_attrs'], aux['edge_attrs'])
+
+        postprocess(
+            name=genome, 
+            hyperparams=postprocessing_config, 
+            paths=paths,
+            n2s=aux['n2s'],
+            r2n=aux['r2n'],
+            r2s=aux['r2s'],
+            old_graph=dgl_g
+        )

@@ -313,7 +313,7 @@ def walk_to_sequence(walks, graph, aux):
 
     return contigs
 
-def gnnome_decoding(genome, gnnome_config, paths):
+def gnnome_decoding(genome, gnnome_config, paths, g, n2s):
     train_config = gnnome_config['training']
     decode_config = gnnome_config['decoding']
 
@@ -321,7 +321,6 @@ def gnnome_decoding(genome, gnnome_config, paths):
     time_start = datetime.now()
 
     print(f"Initialising... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-    g = dgl.load_graphs(paths['graph']+f'{genome}.dgl')[0][0]
     g, x, e = preprocess_graph(g)
 
     save_path = paths['baseline']
@@ -374,8 +373,7 @@ def gnnome_decoding(genome, gnnome_config, paths):
     aux['edges_full'] = edges_full
 
     print(f"Generating contigs... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-    with open(paths['n2s'], 'rb') as f:
-        aux['n2s'] = pickle.load(f)
+    aux['n2s'] = n2s
     contigs = walk_to_sequence(walks, g, aux)
 
     print(f"Calculating assembly metrics... (Time: {timedelta_to_str(datetime.now() - time_start)})")
