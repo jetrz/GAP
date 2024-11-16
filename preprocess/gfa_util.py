@@ -193,7 +193,7 @@ def parse_final_gfa(gfa_path, r2s):
     return edge_ref, edge_index, n2s, n2r, r2n, read_lens, prefix_lens, ol_lens, ol_sims
 
 def preprocess_gfa(gfa_path, aux, source):
-    if source == 'gnnome':
+    if source == 'GNNome':
         edge_ref, edge_index, n2s, n2r, r2n, read_lens, prefix_lens, ol_lens, ol_sims = parse_raw_gfa(gfa_path)
     elif source == 'hifiasm':
         edge_ref, edge_index, n2s, n2r, r2n, read_lens, prefix_lens, ol_lens, ol_sims = parse_final_gfa(gfa_path, aux['r2s'])
