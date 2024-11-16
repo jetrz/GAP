@@ -2,14 +2,14 @@ run:
   preprocessing:
     source: 'hifiasm'
     genomes:
-      - 'gorilla_30x_p'
+      - 'hg002_20x_p'
   generate_baseline:
     source: 'hifiasm'
     genomes:
-      - 'gorilla_30x_p'
+      - 'hg002_20x_p'
   postprocessing:
     genomes:
-      - 'gorilla_30x_p'
+      - 'hg002_20x_p'
 
 postprocessing:
   walk_valid_p: 0.0025
