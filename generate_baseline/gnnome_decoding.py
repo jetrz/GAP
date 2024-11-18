@@ -126,7 +126,6 @@ def get_contigs_greedy(g, succs, preds, edges, nb_paths=50, len_threshold=20):
 
     while True:
         idx_contig += 1
-        time_start_sample_edges = datetime.now()
         sub_g, map_subg_to_g = get_subgraph(g, visited, 'cpu')
         if sub_g.num_edges() == 0:
             break
@@ -134,9 +133,6 @@ def get_contigs_greedy(g, succs, preds, edges, nb_paths=50, len_threshold=20):
         prob_edges = torch.sigmoid(sub_g.edata['score']).squeeze()
 
         idx_edges = sample_edges(prob_edges, nb_paths)
-
-        elapsed = timedelta_to_str(datetime.now() - time_start_sample_edges)
-        print(f'Elapsed time (sample edges): {elapsed}')
 
         all_walks = []
         all_visited_iter = []
@@ -146,12 +142,7 @@ def get_contigs_greedy(g, succs, preds, edges, nb_paths=50, len_threshold=20):
         all_meanLogProbs = []
         all_meanLogProbs_scaled = []
 
-        print(f'\nidx_contig: {idx_contig}, nb_processed_nodes: {len(visited)}, ' \
-              f'nb_remaining_nodes: {g.num_nodes() - len(visited)}, nb_original_nodes: {g.num_nodes()}')
-
         # Get nb_paths paths for a single iteration, then take the longest one
-        time_start_get_candidates = datetime.now()
-
         with ThreadPoolExecutor(1) as executor:
             results = {}
             start_times = {}
@@ -196,8 +187,8 @@ def get_contigs_greedy(g, succs, preds, edges, nb_paths=50, len_threshold=20):
                     meanLogProb_it = 0.0
                     meanLogprob_scaled_it = 0.0
                     print(f'SELF-LOOP!')
-                print(f'{indx:<3}: src={k[0]:<8} dst={k[1]:<8} len_walk={len_walk_it:<8} len_contig={len_contig_it:<12} ' \
-                      f'sumLogProb={sumLogProb_it:<12.3f} meanLogProb={meanLogProb_it:<12.4} meanLogProb_scaled={meanLogProb_scaled_it:<12.4}')
+                # print(f'{indx:<3}: src={k[0]:<8} dst={k[1]:<8} len_walk={len_walk_it:<8} len_contig={len_contig_it:<12} ' \
+                      # f'sumLogProb={sumLogProb_it:<12.3f} meanLogProb={meanLogProb_it:<12.4} meanLogProb_scaled={meanLogProb_scaled_it:<12.4}')
 
                 indx += 1
                 all_walks.append(walk_it)
@@ -210,43 +201,33 @@ def get_contigs_greedy(g, succs, preds, edges, nb_paths=50, len_threshold=20):
         best = max(all_contig_lens)
         idxx = all_contig_lens.index(best)
 
-        elapsed = timedelta_to_str(datetime.now() - time_start_get_candidates)
-        print(f'Elapsed time (get_candidates): {elapsed}')
-
         best_walk = all_walks[idxx]
         best_visited = all_visited_iter[idxx]
 
         # Add all jumped-over nodes
-        time_start_get_visited = datetime.now()
         trans = set()
         for ss, dd in zip(best_walk[:-1], best_walk[1:]):
             t1 = set(succs[ss]) & set(preds[dd])
             t2 = {t^1 for t in t1}
             trans = trans | t1 | t2
         best_visited = best_visited | trans
-
         best_contig_len = all_contig_lens[idxx]
-        best_sumLogProb = all_sumLogProbs[idxx]
-        best_meanLogProb = all_meanLogProbs[idxx]
-        best_meanLogProb_scaled = all_meanLogProbs_scaled[idxx]
 
-        elapsed = timedelta_to_str(datetime.now() - time_start_get_visited)
-        print(f'Elapsed time (get visited): {elapsed}')
+        # print(f'\nChosen walk with index: {idxx}')
+        # print(f'len_walk={len(best_walk):<8} len_contig={best_contig_len:<12}')
 
-        print(f'\nChosen walk with index: {idxx}')
-        print(f'len_walk={len(best_walk):<8} len_contig={best_contig_len:<12} ' \
-              f'sumLogProb={best_sumLogProb:<12.3f} meanLogProb={best_meanLogProb:<12.4} meanLogProb_scaled={best_meanLogProb_scaled:<12.4}\n')
+        if best_contig_len < 70000: break
+        if len(best_walk) < len_threshold: break
 
-        if best_contig_len < 70000:
-            break
-        if len(best_walk) < len_threshold:
-            break
         all_contigs.append(best_walk)
         all_walks_len.append(len(best_walk))
         all_contigs_len.append(best_contig_len)
         visited |= best_visited
-        print(f'All walks len: {all_walks_len}')
-        print(f'All contigs len: {all_contigs_len}\n')
+
+        print(f'\nidx_contig: {idx_contig}, nb_processed_nodes: {len(visited)}, ' \
+              f'nb_remaining_nodes: {g.num_nodes() - len(visited)}, nb_original_nodes: {g.num_nodes()}, latest walk len: {all_walks_len[-1]}, latest contig len: {all_contigs_len[-1]}')
+        # print(f'All walks len: {all_walks_len}')
+        # print(f'All contigs len: {all_contigs_len}\n')
 
     return all_contigs
 
