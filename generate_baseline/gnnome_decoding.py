@@ -224,7 +224,7 @@ def get_contigs_greedy(g, succs, preds, edges, nb_paths=50, len_threshold=20):
         all_contigs_len.append(best_contig_len)
         visited |= best_visited
 
-        print(f'\nidx_contig: {idx_contig}, nb_processed_nodes: {len(visited)}, ' \
+        print(f'idx_contig: {idx_contig}, nb_processed_nodes: {len(visited)}, ' \
               f'nb_remaining_nodes: {g.num_nodes() - len(visited)}, nb_original_nodes: {g.num_nodes()}, latest walk len: {all_walks_len[-1]}, latest contig len: {all_contigs_len[-1]}')
         # print(f'All walks len: {all_walks_len}')
         # print(f'All contigs len: {all_contigs_len}\n')

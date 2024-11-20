@@ -15,7 +15,7 @@ def run_preprocessing(config):
     
         genome_info = config['genome_info'][genome]
         gfa_path = genome_info['paths']['gfa']
-        assert (source == "GNNome" and gfa_path.endswith(".bp.raw.r_utg.gfa")) or (source == "hifiasm" and gfa_path.endswith(".bp.p_ctg.gfa")), "Invalid GFA file!"
+        assert (source == "GNNome" and gfa_path.endswith(".bp.raw.r_utg.gfa")) or (source == "hifiasm" and gfa_path.endswith(".p_ctg.gfa")), "Invalid GFA file!"
         
         print(f"Processing Error Corrected Reads FASTA... (Time: {timedelta_to_str(datetime.now() - time_start)})")
         r2s = parse_ec_fasta(genome_info['paths']['ec_reads'])
