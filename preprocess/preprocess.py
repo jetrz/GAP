@@ -1,5 +1,5 @@
 from datetime import datetime
-import dgl, pickle, torch
+import dgl, os, pickle, torch
 
 from misc.utils import pyg_to_dgl, timedelta_to_str
 from .gfa_util import preprocess_gfa
@@ -18,11 +18,16 @@ def run_preprocessing(config):
         assert (source == "GNNome" and gfa_path.endswith(".bp.raw.r_utg.gfa")) or (source == "hifiasm" and gfa_path.endswith(".p_ctg.gfa")), "Invalid GFA file!"
         
         print(f"Processing Error Corrected Reads FASTA... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-        r2s = parse_ec_fasta(genome_info['paths']['ec_reads'])
+        if os.path.isfile(genome_info['paths']['r2s']) and os.path.getsize(genome_info['paths']['r2s']) > 0:
+            print("Existing r2s file found! Reading...")
+            with open(genome_info['paths']['r2s'], 'rb') as f:
+                r2s = pickle.load(f)
+        else:
+            r2s = parse_ec_fasta(genome_info['paths']['ec_reads'])
+            with open(genome_info['paths']['r2s'], "wb") as p:
+                pickle.dump(r2s, p)
         aux['r2s'] = r2s
-        with open(genome_info['paths']['r2s'], "wb") as p:
-            pickle.dump(r2s, p)
-        
+
         print(f"Processing GFA... (Time: {timedelta_to_str(datetime.now() - time_start)})")
         g, aux = preprocess_gfa(gfa_path, aux, source)
         with open(genome_info['paths']['n2s'], "wb") as p:

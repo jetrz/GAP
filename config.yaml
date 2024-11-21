@@ -682,7 +682,7 @@ genome_info:
       paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_20x_m/hg002_d_20x_m_paf_data.pkl'
       ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/hg002v1.0.1_MATERNAL.fasta'
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_20x_m/hg002_d_20x_m_r2n.pkl'
-      r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_20x_m/hg002_d_20x_m_r2s.pkl'
+      r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_20x_p/hg002_d_20x_p_r2s.pkl' # use the p one, because the .ec.fa is the same
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/hg002_d_20x_m/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_20x_m/walks.pkl' # Ensure this aligns with baseline
   bonobo_d_20x_p:
@@ -716,7 +716,7 @@ genome_info:
       paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_20x_m/bonobo_d_20x_m_paf_data.pkl'
       ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/mPanPan1_Mat.fasta'
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_20x_m/bonobo_d_20x_m_r2n.pkl'
-      r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_20x_m/bonobo_d_20x_m_r2s.pkl'
+      r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_20x_p/bonobo_d_20x_p_r2s.pkl' # use the p one, because the .ec.fa is the same
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/bonobo_d_20x_m/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_d_20x_m/walks.pkl' # Ensure this aligns with baseline
 
