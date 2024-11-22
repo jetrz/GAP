@@ -26,15 +26,35 @@ def hifiasm_decoding(paths):
     contigs, walks = [], []
     for c_id, reads in c2r.items():
         reads = sorted(reads, key=lambda x:int(x[2]))
+
+        # Remove "Ns" from the start and end of a contig
+        while True:
+            curr_row = reads[-1]
+            if curr_row[4] != "Ns": break
+            reads.pop()
+        while True:
+            curr_row = reads[0]
+            if curr_row[4] != "Ns": break
+            reads.pop(0)
+
         c_seq, c_walk = "", []
         for i in range(len(reads)-1):
             curr_row, next_row = reads[i], reads[i+1]
-            src_seq = r2s[curr_row[4]][0] if curr_row[3] == "+" else r2s[curr_row[4]][1]
+            curr_read = curr_row[4]
+            
+            # Handling of scaffolded regions
+            if curr_read == "Ns":
+                curr_n_len = int(next_row[2])-int(curr_row[2])
+                src_seq = "N"*int(curr_n_len)
+                curr_read = f"custom_n_{curr_n_len}"
+            else:
+                src_seq = r2s[curr_read][0] if curr_row[3] == "+" else r2s[curr_read][1]
+
             src_seq = src_seq[int(curr_row[5]):int(curr_row[6])]
             curr_prefix = int(next_row[2])-int(curr_row[2])
             c_seq += src_seq[:curr_prefix]
 
-            curr_node = r2n[curr_row[4]][0] if curr_row[3] == "+" else r2n[curr_row[4]][1]
+            curr_node = r2n[curr_read][0] if curr_row[3] == "+" else r2n[curr_read][1]
             c_walk.append(curr_node)
 
         curr_row = reads[-1]

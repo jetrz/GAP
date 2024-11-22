@@ -171,11 +171,37 @@ def parse_final_gfa(gfa_path, r2s):
         read_lens[real_id] = len(r2s[read][0]); read_lens[virt_id] = len(r2s[read][1])
         r2n[read] = (real_id, virt_id)
         
-    for contig, reads in contigs.items():
+    for reads in contigs.values():
         reads = sorted(reads, key=lambda x:int(x[2])) # sort by order in contig
+
+        # Remove "Ns" from the start and end of a contig
+        while True:
+            curr_row = reads[-1]
+            if curr_row[4] != "Ns": break
+            reads.pop()
+        while True:
+            curr_row = reads[0]
+            if curr_row[4] != "Ns": break
+            reads.pop(0)
+
         for i in range(len(reads)-1):
             curr_row, next_row = reads[i], reads[i+1]
             curr_read, next_read = curr_row[4], next_row[4]
+
+            # Handling of scaffolded regions
+            if next_read == "Ns":
+                # If not, create the custom read based on its length. Then, update reads, r2n and n2r. 
+                # Will have name custom_n_<length>. As a result, different Ns with same length will point to the same node.
+                curr_n_len = int(reads[i+2][2])-int(next_row[2])
+                next_read = f"custom_n_{curr_n_len}"
+                reads[i+1][4] = next_read
+                real_id, virt_id = n_id, n_id+1
+                n_id += 2
+                n2r[real_id] = next_read; n2r[virt_id] = next_read
+                n2s[real_id] = "N"*curr_n_len; n2s[virt_id] = "N"*curr_n_len
+                r2n[next_read] = (real_id, virt_id)
+                read_lens[real_id] = curr_n_len; read_lens[virt_id] = curr_n_len
+
             curr_node = r2n[curr_read][0] if curr_row[3] == "+" else r2n[curr_read][1]
             next_node = r2n[next_read][0] if next_row[3] == "+" else r2n[next_read][1]
 
