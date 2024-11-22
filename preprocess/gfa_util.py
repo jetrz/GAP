@@ -157,7 +157,7 @@ def parse_final_gfa(gfa_path, r2s):
         row = row.strip().split()
         if row[0] != "A": continue
         contigs[row[1]].append(row)
-        unique_reads.add(row[4])
+        if row[4] != "Ns": unique_reads.add(row[4])
 
     n_id, e_id = 0, 0
     n2r, n2s, r2n = {}, {}, {}
