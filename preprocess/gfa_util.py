@@ -195,12 +195,13 @@ def parse_final_gfa(gfa_path, r2s):
                 curr_n_len = int(reads[i+2][2])-int(next_row[2])
                 next_read = f"custom_n_{curr_n_len}"
                 reads[i+1][4] = next_read
-                real_id, virt_id = n_id, n_id+1
-                n_id += 2
-                n2r[real_id] = next_read; n2r[virt_id] = next_read
-                n2s[real_id] = "N"*curr_n_len; n2s[virt_id] = "N"*curr_n_len
-                r2n[next_read] = (real_id, virt_id)
-                read_lens[real_id] = curr_n_len; read_lens[virt_id] = curr_n_len
+                if next_read not in r2n: # Scaffolded region of this length does not exist yet
+                    real_id, virt_id = n_id, n_id+1
+                    n_id += 2
+                    n2r[real_id] = next_read; n2r[virt_id] = next_read
+                    n2s[real_id] = "N"*curr_n_len; n2s[virt_id] = "N"*curr_n_len
+                    r2n[next_read] = (real_id, virt_id)
+                    read_lens[real_id] = curr_n_len; read_lens[virt_id] = curr_n_len
 
             curr_node = r2n[curr_read][0] if curr_row[3] == "+" else r2n[curr_read][1]
             next_node = r2n[next_read][0] if next_row[3] == "+" else r2n[next_read][1]
