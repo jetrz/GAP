@@ -3,7 +3,7 @@ import dgl, os, pickle, torch
 
 from misc.utils import pyg_to_dgl, timedelta_to_str
 from .gfa_util import preprocess_gfa
-from .fasta_util import parse_ec_fasta
+from .fasta_util import parse_fasta
 from .paf_util import parse_paf
 
 def run_preprocessing(config):
@@ -17,13 +17,16 @@ def run_preprocessing(config):
         gfa_path = genome_info['paths']['gfa']
         assert (source == "GNNome" and gfa_path.endswith(".bp.raw.r_utg.gfa")) or (source == "hifiasm" and gfa_path.endswith(".p_ctg.gfa")), "Invalid GFA file!"
         
-        print(f"Processing Error Corrected Reads FASTA... (Time: {timedelta_to_str(datetime.now() - time_start)})")
+        print(f"Processing Error Corrected Hifi Reads & UL Reads FASTA... (Time: {timedelta_to_str(datetime.now() - time_start)})")
         if os.path.isfile(genome_info['paths']['r2s']) and os.path.getsize(genome_info['paths']['r2s']) > 0:
             print("Existing r2s file found! Reading...")
             with open(genome_info['paths']['r2s'], 'rb') as f:
                 r2s = pickle.load(f)
         else:
-            r2s = parse_ec_fasta(genome_info['paths']['ec_reads'])
+            r2s = parse_fasta(genome_info['paths']['ec_reads'])
+            if genome_info['paths']['ul_reads'] and os.path.isfile(genome_info['paths']['ul_reads']):
+                ul_r2s = parse_fasta(genome_info['paths']['ul_reads'])
+                r2s.update(ul_r2s)
             with open(genome_info['paths']['r2s'], "wb") as p:
                 pickle.dump(r2s, p)
         aux['r2s'] = r2s

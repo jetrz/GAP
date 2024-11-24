@@ -8,7 +8,8 @@ def parse_read(read):
     seqs = (str(read.seq), str(Seq(read.seq).reverse_complement()))
     return read.id, seqs
 
-def parse_ec_fasta(path):
+def parse_fasta(path):
+    print(f"Parsing {path}...")
     if path.endswith('gz'):
         if path.endswith('fasta.gz') or path.endswith('fna.gz') or path.endswith('fa.gz'):
             filetype = 'fasta'
