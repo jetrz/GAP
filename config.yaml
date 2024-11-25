@@ -2,17 +2,19 @@ run:
   preprocessing:
     source: 'hifiasm'
     genomes:
-      - 'hg002_d_20x_scaf_p'
-      - 'hg002_d_20x_scaf_m'
+      - 'hg002_d_ul_20x_scaf_p'
+      - 'hg002_d_ul_20x_scaf_m'
   generate_baseline:
     source: 'hifiasm'
     genomes:
-      - 'hg002_d_20x_scaf_p'
-      - 'hg002_d_20x_scaf_m'
+      - 'hg002_d_ul_20x_scaf_p'
+      - 'hg002_d_ul_20x_scaf_m'
+      - 'hg002_d_ul_20x_p'
   postprocessing:
     genomes:
-      - 'hg002_d_20x_scaf_p'
-      - 'hg002_d_20x_scaf_m'
+      - 'hg002_d_ul_20x_scaf_p'
+      - 'hg002_d_ul_20x_scaf_m'
+      - 'hg002_d_ul_20x_p'
 
 postprocessing:
   walk_valid_p: 0.0025
@@ -774,7 +776,7 @@ genome_info:
       paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_20x_p/hg002_d_ul_20x_p_paf_data.pkl'
       ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/hg002v1.0.1_PATERNAL.fasta'
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_20x_p/hg002_d_ul_20x_p_r2n.pkl'
-      r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_20x_p/hg002_d_ul_20x_p_r2s.pkl'
+      r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_20x_scaf_p/hg002_d_ul_20x_scaf_p_r2s.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/hg002_d_ul_20x_p/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_ul_20x_p/walks.pkl' # Ensure this aligns with baseline
   hg002_d_ul_20x_m:
@@ -792,7 +794,7 @@ genome_info:
       paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_20x_m/hg002_d_ul_20x_m_paf_data.pkl'
       ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/hg002v1.0.1_MATERNAL.fasta'
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_20x_m/hg002_d_ul_20x_m_r2n.pkl'
-      r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_20x_p/hg002_d_ul_20x_p_r2s.pkl' # use the p one, because the .ec.fa is the same
+      r2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_20x_scaf_p/hg002_d_ul_20x_scaf_p_r2s.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/hg002_d_ul_20x_m/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_ul_20x_m/walks.pkl' # Ensure this aligns with baseline
   hg002_d_ul_20x_scaf_p:
