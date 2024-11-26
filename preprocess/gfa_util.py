@@ -175,7 +175,7 @@ def parse_final_gfa(gfa_path, aux):
         read_lens[real_id] = len(c_seq); read_lens[virt_id] = len(c_seq_rev)
         r2n[read] = (real_id, virt_id)
         
-    for reads in tqdm(contigs.values(), ncols=120):
+    for reads in contigs.values():
         reads = sorted(reads, key=lambda x:int(x[2])) # sort by order in contig
 
         # Remove "Ns" from the start and end of a contig

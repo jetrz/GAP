@@ -1,17 +1,13 @@
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 import edlib
-from multiprocessing import Pool, Lock
+from multiprocessing import Pool
 from tqdm import tqdm
 
 from misc.utils import get_seqs
 
 HIFI_R2S, UL_R2S, R2N, SUCCESSOR_DICT, N2R, READS_PARSED = None, None, None, None, None, set()
-
-# For pyfaidx
-def init_lock(l):
-    global lock
-    lock = l
 
 # We have to do this because cannot pickle defaultdicts created by lambda
 def create_list_dd():
@@ -299,7 +295,6 @@ def parse_row(row):
     if str(src_id) not in READS_PARSED and str(dst_id) not in READS_PARSED: 
         return 3, row
 
-    lock.acquire()
     if src[1] == '+' and dst[1] == '+':
         src_seq, _ = get_seqs(src_id, HIFI_R2S, UL_R2S)
         dst_seq, _ = get_seqs(dst_id, HIFI_R2S, UL_R2S)
@@ -311,7 +306,6 @@ def parse_row(row):
         dst_seq, _ = get_seqs(dst_id, HIFI_R2S, UL_R2S)
     else:
         raise Exception("Unrecognised orientation pairing.")
-    lock.release()
 
     if str(src_id) in READS_PARSED and str(dst_id) in READS_PARSED:
         c_ol_len = end1-start1 # overlapping region length might not always be equal between source and target. but we always take source for ol length
@@ -464,8 +458,8 @@ def parse_paf(paf_path, aux):
         print(f"Starting run for Hop {hop}. nrows: {len(curr_rows)}, cutoff: {cutoff}")
         curr_ghost_info = {'+':defaultdict(create_list_dd), '-':defaultdict(create_list_dd)}
 
-        with Pool(40, initializer=init_lock, initargs=(Lock(),)) as pool:
-            results = pool.imap_unordered(parse_row, iter(curr_rows), chunksize=160)
+        with ThreadPoolExecutor(max_workers=40) as executor:
+            results = executor.map(parse_row, curr_rows)
             for code, data in tqdm(results, total=len(curr_rows), ncols=120):
                 if code == 0: 
                     continue
