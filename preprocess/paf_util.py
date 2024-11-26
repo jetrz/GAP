@@ -459,8 +459,8 @@ def parse_paf(paf_path, aux):
         curr_ghost_info = {'+':defaultdict(create_list_dd), '-':defaultdict(create_list_dd)}
 
         with ThreadPoolExecutor(max_workers=40) as executor:
-            results = executor.map(parse_row, curr_rows)
-            for code, data in tqdm(results, total=len(curr_rows), ncols=120):
+            results = tqdm(executor.map(parse_row, curr_rows), total=len(curr_rows), ncols=120)
+            for code, data in results:
                 if code == 0: 
                     continue
                 elif code == 1:
