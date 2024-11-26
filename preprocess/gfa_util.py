@@ -153,8 +153,8 @@ def parse_final_gfa(paths):
     print("Loading GFA...")
     with open(paths['gfa']) as f:
         rows = f.readlines()
-    hifi_r2s = Fasta(paths['ec_reads'], as_raw=True)
-    ul_r2s = Fasta(paths['ul_reads'], as_raw=True) if paths['ul_reads'] else None
+    hifi_r2s = Fasta(paths['ec_reads'])
+    ul_r2s = Fasta(paths['ul_reads']) if paths['ul_reads'] else None
 
     print("Parsing rows...")
     contigs, unique_reads = defaultdict(list), set()

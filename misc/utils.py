@@ -54,9 +54,9 @@ def asm_metrics(contigs, save_path, ref_path, minigraph_path, paftools_path):
 
 def get_seqs(id, hifi_r2s, ul_r2s):
     if id in hifi_r2s:
-        return hifi_r2s[id][:], -hifi_r2s[id][:]
+        return str(hifi_r2s[id][:]), str(-hifi_r2s[id][:])
     elif ul_r2s is not None and id in ul_r2s:
-        return ul_r2s[id][:], -ul_r2s[id][:]
+        return str(ul_r2s[id][:]), str(-ul_r2s[id][:])
     else:
         raise ValueError("Read not present in seq dataset FASTAs!")
 

@@ -432,8 +432,8 @@ def parse_paf(paths, aux):
     
     global HIFI_R2S, UL_R2S, R2N, SUCCESSOR_DICT, N2R, READS_PARSED
     R2N, SUCCESSOR_DICT, N2R, READS_PARSED = aux['r2n'], aux['successor_dict'], aux['n2r'], set()
-    HIFI_R2S = Fasta(paths['ec_reads'], as_raw=True)
-    UL_R2S = Fasta(paths['ul_reads'], as_raw=True) if paths['ul_reads'] else None
+    HIFI_R2S = Fasta(paths['ec_reads'])
+    UL_R2S = Fasta(paths['ul_reads']) if paths['ul_reads'] else None
 
     for c_n_id in sorted(N2R.keys()):
         if c_n_id % 2 != 0: continue # Skip all virtual nodes

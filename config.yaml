@@ -2,17 +2,17 @@ run:
   preprocessing:
     source: 'hifiasm'
     genomes:
-      - 'bonobo_d_ul_20x_scaf_p'
-      - 'bonobo_d_ul_20x_scaf_m'
+      - 'hg002_d_20x_scaf_p'
+      - 'hg002_d_20x_scaf_m'
   generate_baseline:
     source: 'hifiasm'
     genomes:
-      - 'bonobo_d_ul_20x_scaf_p'
-      - 'bonobo_d_ul_20x_scaf_m'
+      - 'hg002_d_20x_scaf_p'
+      - 'hg002_d_20x_scaf_m'
   postprocessing:
     genomes:
-      - 'bonobo_d_ul_20x_scaf_p'
-      - 'bonobo_d_ul_20x_scaf_m'
+      - 'hg002_d_20x_scaf_p'
+      - 'hg002_d_20x_scaf_m'
 
 postprocessing:
   walk_valid_p: 0.0025

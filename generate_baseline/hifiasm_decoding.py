@@ -20,8 +20,8 @@ def hifiasm_decoding(paths):
 
     with open(paths['r2n'], 'rb') as f:
         r2n = pickle.load(f)
-    hifi_r2s = Fasta(paths['ec_reads'], as_raw=True)
-    ul_r2s = Fasta(paths['ul_reads'], as_raw=True) if paths['ul_reads'] else None
+    hifi_r2s = Fasta(paths['ec_reads'])
+    ul_r2s = Fasta(paths['ul_reads']) if paths['ul_reads'] else None
 
     print(f"Generating contigs... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     contigs, walks = [], []
