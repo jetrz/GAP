@@ -153,6 +153,8 @@ def parse_final_gfa(paths):
     print("Loading GFA...")
     with open(paths['gfa']) as f:
         rows = f.readlines()
+    hifi_r2s = Fasta(paths['ec_reads'], as_raw=True)
+    ul_r2s = Fasta(paths['ul_reads'], as_raw=True) if paths['ul_reads'] else None
 
     print("Parsing rows...")
     contigs, unique_reads = defaultdict(list), set()
@@ -166,8 +168,6 @@ def parse_final_gfa(paths):
     n2r, n2s, r2n = {}, {}, {}
     edge_ref, read_lens, prefix_lens, ol_lens, ol_sims = {}, {}, {}, {}, {}
     edge_index = [[],[]]
-    hifi_r2s = Fasta(paths['ec_reads'], as_raw=True)
-    ul_r2s = Fasta(paths['ul_reads'], as_raw=True) if paths['ul_reads'] else None
     for read in unique_reads:
         real_id, virt_id = n_id, n_id+1
         n_id += 2
