@@ -1,9 +1,9 @@
 from datetime import datetime
-import dgl, os, pickle, torch
+import dgl, pickle, torch
+from pyfaidx import Fasta
 
 from misc.utils import pyg_to_dgl, timedelta_to_str
 from .gfa_util import preprocess_gfa
-from .fasta_util import parse_fasta
 from .paf_util import parse_paf
 
 def run_preprocessing(config):
@@ -16,9 +16,15 @@ def run_preprocessing(config):
         genome_info = config['genome_info'][genome]
         gfa_path = genome_info['paths']['gfa']
         assert (source == "GNNome" and gfa_path.endswith(".bp.raw.r_utg.gfa")) or (source == "hifiasm" and gfa_path.endswith(".p_ctg.gfa")), "Invalid GFA file!"
-        
+
+        print(f"Processing FASTAs... (Time: {timedelta_to_str(datetime.now() - time_start)})")
+        aux = {
+            'hifi_r2s' : Fasta(genome_info['paths']['ec_reads']),
+            'ul_r2s' : Fasta(genome_info['paths']['ul_reads']) if genome_info['paths']['ul_reads'] else None
+        }
+
         print(f"Processing GFA... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-        g, aux = preprocess_gfa(genome_info['paths'], source)
+        g, aux = preprocess_gfa(genome_info['paths']['gfa'], aux, source)
         with open(genome_info['paths']['n2s'], "wb") as p:
             pickle.dump(aux['n2s'], p)
         with open(genome_info['paths']['r2n'], "wb") as p:
@@ -28,7 +34,7 @@ def run_preprocessing(config):
         dgl.save_graphs(genome_info['paths']['graph']+f'{genome}.dgl', [dgl_g])
 
         print(f"Processing PAF... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-        paf_data = parse_paf(genome_info['paths'], aux)
+        paf_data = parse_paf(genome_info['paths']['paf'], aux)
         with open(genome_info['paths']['paf_processed'], "wb") as p:
             pickle.dump(paf_data, p)
 

@@ -1,6 +1,5 @@
 from Bio.Seq import Seq
 from collections import defaultdict
-from pyfaidx import Fasta
 from torch_geometric.data import Data
 from tqdm import tqdm
 import edlib, re, torch
@@ -149,12 +148,11 @@ def parse_raw_gfa(gfa_path):
 
     return edge_ids, edge_index, n2s, n2r, r2n, read_lengths, prefix_lengths, overlap_lengths, overlap_similarities
 
-def parse_final_gfa(paths):
+def parse_final_gfa(gfa_path, aux):
     print("Loading GFA...")
-    with open(paths['gfa']) as f:
+    with open(gfa_path) as f:
         rows = f.readlines()
-    hifi_r2s = Fasta(paths['ec_reads'])
-    ul_r2s = Fasta(paths['ul_reads']) if paths['ul_reads'] else None
+    hifi_r2s, ul_r2s = aux['hifi_r2s'], aux['ul_r2s']
 
     print("Parsing rows...")
     contigs, unique_reads = defaultdict(list), set()
@@ -177,7 +175,7 @@ def parse_final_gfa(paths):
         read_lens[real_id] = len(c_seq); read_lens[virt_id] = len(c_seq_rev)
         r2n[read] = (real_id, virt_id)
         
-    for reads in contigs.values():
+    for reads in tqdm(contigs.values(), ncols=120):
         reads = sorted(reads, key=lambda x:int(x[2])) # sort by order in contig
 
         # Remove "Ns" from the start and end of a contig
@@ -225,11 +223,11 @@ def parse_final_gfa(paths):
 
     return edge_ref, edge_index, n2s, n2r, r2n, read_lens, prefix_lens, ol_lens, ol_sims
 
-def preprocess_gfa(paths, source):
+def preprocess_gfa(gfa_path, aux, source):
     if source == 'GNNome':
-        edge_ref, edge_index, n2s, n2r, r2n, read_lens, prefix_lens, ol_lens, ol_sims = parse_raw_gfa(paths['gfa'])
+        edge_ref, edge_index, n2s, n2r, r2n, read_lens, prefix_lens, ol_lens, ol_sims = parse_raw_gfa(gfa_path)
     elif source == 'hifiasm':
-        edge_ref, edge_index, n2s, n2r, r2n, read_lens, prefix_lens, ol_lens, ol_sims = parse_final_gfa(paths)
+        edge_ref, edge_index, n2s, n2r, r2n, read_lens, prefix_lens, ol_lens, ol_sims = parse_final_gfa(gfa_path, aux)
     else:
         raise ValueError("Invalid source!")
     
@@ -252,7 +250,6 @@ def preprocess_gfa(paths, source):
     assert g.N_ID.shape[0] == g.read_length.shape[0], "Length of node features are not equal!"
     assert g.E_ID.shape[0] == g.edge_index.shape[1] == g.prefix_length.shape[0] == g.overlap_length.shape[0] == g.overlap_similarity.shape[0], "Length of edge features are not equal!"
 
-    aux = {}
     aux['r2n'] = r2n
     aux['n2s'] = n2s
     aux['n2r'] = n2r

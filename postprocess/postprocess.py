@@ -828,7 +828,7 @@ def get_contigs(old_walks, new_walks, adj_list, n2s, n2s_ghost, g):
 
     return contigs
 
-def postprocess(name, hyperparams, paths):
+def postprocess(name, hyperparams, paths, walks, aux):
     """
     (\(\        \|/        /)/)
     (  ^.^)     -o-     (^.^  )
@@ -851,19 +851,7 @@ def postprocess(name, hyperparams, paths):
     for k, v in hyperparams.items():
         hyperparams_str += f"{k}: {v}, "
     print(hyperparams_str[:-2]+"\n")
-
-    print(f"Loading files... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-    with open(paths['walks'], 'rb') as f:
-        walks = pickle.load(f)
-    with open(paths['n2s'], 'rb') as f:
-        n2s = pickle.load(f)
-    with open(paths['r2n'], 'rb') as f:
-        r2n = pickle.load(f)
-    with open(paths['paf_processed'], 'rb') as f:
-        paf_data = pickle.load(f)
-    old_graph = dgl.load_graphs(paths['graph']+f'{name}.dgl')[0][0]
-    hifi_r2s = Fasta(paths['ec_reads'])
-    ul_r2s = Fasta(paths['ul_reads']) if paths['ul_reads'] else None
+    walks, n2s, r2n, paf_data, old_graph, hifi_r2s, ul_r2s = aux['walks'], aux['n2s'], aux['r2n'], aux['paf_data'], aux['old_graph'], aux['hifi_r2s'], aux['ul_r2s']
 
     print(f"Chopping old walks... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     if hyperparams['use_telomere_info']:
@@ -917,9 +905,23 @@ def run_postprocessing(config):
         paths = config['genome_info'][genome]['paths']
         paths.update(config['misc']['paths'])
 
+        print("Loading files...")
+        aux = {}
+        with open(paths['walks'], 'rb') as f:
+            aux['walks'] = pickle.load(f)
+        with open(paths['n2s'], 'rb') as f:
+            aux['n2s'] = pickle.load(f)
+        with open(paths['r2n'], 'rb') as f:
+            aux['r2n'] = pickle.load(f)
+        with open(paths['paf_processed'], 'rb') as f:
+            aux['paf_data'] = pickle.load(f)
+        aux['old_graph'] = dgl.load_graphs(paths['graph']+f'{genome}.dgl')[0][0]
+        aux['hifi_r2s'] = Fasta(paths['ec_reads'])
+        aux['ul_r2s'] = Fasta(paths['ul_reads']) if paths['ul_reads'] else None
+
         # postprocess(genome, hyperparams=postprocessing_config, paths=paths)
         for use_telomere_info in [True, False]:
             postprocessing_config['use_telomere_info'] = use_telomere_info
             for w in [0.005, 0.0025, 0.001]:
                 postprocessing_config['walk_valid_p'] = w
-                postprocess(genome, hyperparams=postprocessing_config, paths=paths)
+                postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux)
