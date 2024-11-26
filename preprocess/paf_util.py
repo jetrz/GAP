@@ -2,9 +2,12 @@ from collections import defaultdict
 from copy import deepcopy
 import edlib
 from multiprocessing import Pool
+from pyfaidx import Fasta
 from tqdm import tqdm
 
-R2S, R2N, SUCCESSOR_DICT, N2R, READS_PARSED = None, None, None, None, set()
+from misc.utils import get_seqs
+
+HIFI_R2S, UL_R2S, R2N, SUCCESSOR_DICT, N2R, READS_PARSED = None, None, None, None, None, set()
 
 # We have to do this because cannot pickle defaultdicts created by lambda
 def create_list_dd():
@@ -250,7 +253,7 @@ def parse_row(row):
     '''
     data = None
 
-    if not R2S or not R2N or not N2R or not SUCCESSOR_DICT or not READS_PARSED:
+    if not HIFI_R2S or not R2N or not N2R or not SUCCESSOR_DICT or not READS_PARSED:
         raise ValueError("Global objects not set!")
 
     row_split = row.strip().split()
@@ -291,13 +294,16 @@ def parse_row(row):
     
     if str(src_id) not in READS_PARSED and str(dst_id) not in READS_PARSED: 
         return 3, row
-        
+
     if src[1] == '+' and dst[1] == '+':
-        src_seq, dst_seq = R2S[src_id][0], R2S[dst_id][0]
+        src_seq, _ = get_seqs(src_id, HIFI_R2S, UL_R2S)
+        dst_seq, _ = get_seqs(dst_id, HIFI_R2S, UL_R2S)
     elif src[1] == '+' and dst[1] == '-':
-        src_seq, dst_seq = R2S[src_id][0], R2S[dst_id][1]
+        src_seq, _ = get_seqs(src_id, HIFI_R2S, UL_R2S)
+        _, dst_seq = get_seqs(dst_id, HIFI_R2S, UL_R2S)
     elif src[1] == '-' and dst[1] == '+':
-        src_seq, dst_seq = R2S[src_id][1], R2S[dst_id][0]
+        _, src_seq = get_seqs(src_id, HIFI_R2S, UL_R2S)
+        dst_seq, _ = get_seqs(dst_id, HIFI_R2S, UL_R2S)
     else:
         raise Exception("Unrecognised orientation pairing.")
 
@@ -388,7 +394,7 @@ def parse_row(row):
 
         return 2, data
 
-def parse_paf(paf_path, aux):
+def parse_paf(paths, aux):
     '''
     paf_data = {
         ghost_edges = {
@@ -424,8 +430,10 @@ def parse_paf(paf_path, aux):
     '''
     print("Parsing paf file...")
     
-    global R2S, R2N, SUCCESSOR_DICT, N2R, READS_PARSED
-    R2S, R2N, SUCCESSOR_DICT, N2R, READS_PARSED = aux['r2s'], aux['r2n'], aux['successor_dict'], aux['n2r'], set()
+    global HIFI_R2S, UL_R2S, R2N, SUCCESSOR_DICT, N2R, READS_PARSED
+    R2N, SUCCESSOR_DICT, N2R, READS_PARSED = aux['r2n'], aux['successor_dict'], aux['n2r'], set()
+    HIFI_R2S = Fasta(paths['ec_reads'], as_raw=True)
+    UL_R2S = Fasta(paths['ul_reads'], as_raw=True) if paths['ul_reads'] else None
 
     for c_n_id in sorted(N2R.keys()):
         if c_n_id % 2 != 0: continue # Skip all virtual nodes
@@ -435,7 +443,7 @@ def parse_paf(paf_path, aux):
         else:
             READS_PARSED.add(read_id)
 
-    with open(paf_path) as f:
+    with open(paths['paf']) as f:
         rows = f.readlines()
 
     rows = preprocess_rows(rows)

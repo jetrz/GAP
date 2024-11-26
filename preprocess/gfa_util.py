@@ -1,8 +1,11 @@
 from Bio.Seq import Seq
 from collections import defaultdict
+from pyfaidx import Fasta
 from torch_geometric.data import Data
 from tqdm import tqdm
 import edlib, re, torch
+
+from misc.utils import get_seqs
 
 def calculate_similarities(edge_ids, n2s, overlap_lengths):
     overlap_similarities = {}
@@ -146,9 +149,9 @@ def parse_raw_gfa(gfa_path):
 
     return edge_ids, edge_index, n2s, n2r, r2n, read_lengths, prefix_lengths, overlap_lengths, overlap_similarities
 
-def parse_final_gfa(gfa_path, r2s):
+def parse_final_gfa(paths):
     print("Loading GFA...")
-    with open(gfa_path) as f:
+    with open(paths['gfa']) as f:
         rows = f.readlines()
 
     print("Parsing rows...")
@@ -157,19 +160,21 @@ def parse_final_gfa(gfa_path, r2s):
         row = row.strip().split()
         if row[0] != "A": continue
         contigs[row[1]].append(row)
-        if row[4] == "scaf": continue # to be removed once we figure out what this is
-        if row[4] != "Ns": unique_reads.add(row[4])
+        if row[4] != "Ns" and row[4] != "scaf": unique_reads.add(row[4])
 
     n_id, e_id = 0, 0
     n2r, n2s, r2n = {}, {}, {}
     edge_ref, read_lens, prefix_lens, ol_lens, ol_sims = {}, {}, {}, {}, {}
     edge_index = [[],[]]
+    hifi_r2s = Fasta(paths['ec_reads'], as_raw=True)
+    ul_r2s = Fasta(paths['ul_reads'], as_raw=True) if paths['ul_reads'] else None
     for read in unique_reads:
         real_id, virt_id = n_id, n_id+1
         n_id += 2
         n2r[real_id] = read; n2r[virt_id] = read
-        n2s[real_id] = r2s[read][0]; n2s[virt_id] = r2s[read][1]
-        read_lens[real_id] = len(r2s[read][0]); read_lens[virt_id] = len(r2s[read][1])
+        c_seq, c_seq_rev = get_seqs(read, hifi_r2s, ul_r2s)
+        n2s[real_id] = c_seq; n2s[virt_id] = c_seq_rev
+        read_lens[real_id] = len(c_seq); read_lens[virt_id] = len(c_seq_rev)
         r2n[read] = (real_id, virt_id)
         
     for reads in contigs.values():
@@ -178,11 +183,11 @@ def parse_final_gfa(gfa_path, r2s):
         # Remove "Ns" from the start and end of a contig
         while True:
             curr_row = reads[-1]
-            if curr_row[4] != "Ns": break
+            if curr_row[4] != "Ns" and curr_row[4] != "scaf": break
             reads.pop()
         while True:
             curr_row = reads[0]
-            if curr_row[4] != "Ns": break
+            if curr_row[4] != "Ns" and curr_row[4] != "scaf": break
             reads.pop(0)
 
         for i in range(len(reads)-1):
@@ -190,7 +195,7 @@ def parse_final_gfa(gfa_path, r2s):
             curr_read, next_read = curr_row[4], next_row[4]
 
             # Handling of scaffolded regions
-            if next_read == "Ns":
+            if next_read == "Ns" or next_read == "scaf":
                 # If not, create the custom read based on its length. Then, update reads, r2n and n2r. 
                 # Will have name custom_n_<length>. As a result, different Ns with same length will point to the same node.
                 curr_n_len = int(reads[i+2][2])-int(next_row[2])
@@ -220,11 +225,11 @@ def parse_final_gfa(gfa_path, r2s):
 
     return edge_ref, edge_index, n2s, n2r, r2n, read_lens, prefix_lens, ol_lens, ol_sims
 
-def preprocess_gfa(gfa_path, aux, source):
+def preprocess_gfa(paths, source):
     if source == 'GNNome':
-        edge_ref, edge_index, n2s, n2r, r2n, read_lens, prefix_lens, ol_lens, ol_sims = parse_raw_gfa(gfa_path)
+        edge_ref, edge_index, n2s, n2r, r2n, read_lens, prefix_lens, ol_lens, ol_sims = parse_raw_gfa(paths['gfa'])
     elif source == 'hifiasm':
-        edge_ref, edge_index, n2s, n2r, r2n, read_lens, prefix_lens, ol_lens, ol_sims = parse_final_gfa(gfa_path, aux['r2s'])
+        edge_ref, edge_index, n2s, n2r, r2n, read_lens, prefix_lens, ol_lens, ol_sims = parse_final_gfa(paths)
     else:
         raise ValueError("Invalid source!")
     
@@ -247,6 +252,7 @@ def preprocess_gfa(gfa_path, aux, source):
     assert g.N_ID.shape[0] == g.read_length.shape[0], "Length of node features are not equal!"
     assert g.E_ID.shape[0] == g.edge_index.shape[1] == g.prefix_length.shape[0] == g.overlap_length.shape[0] == g.overlap_similarity.shape[0], "Length of edge features are not equal!"
 
+    aux = {}
     aux['r2n'] = r2n
     aux['n2s'] = n2s
     aux['n2r'] = n2r

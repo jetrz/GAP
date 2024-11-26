@@ -3,8 +3,9 @@ from Bio import Seq, SeqIO
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
+from pyfaidx import Fasta
 
-from misc.utils import asm_metrics, timedelta_to_str
+from misc.utils import asm_metrics, get_seqs, timedelta_to_str
 
 class Edge():
     def __init__(self, new_src_nid, new_dst_nid, old_src_nid, old_dst_nid, prefix_len, ol_len, ol_sim):
@@ -214,7 +215,7 @@ def chop_walks_seqtk(old_walks, n2s, graph, rep1, rep2, seqtk_path):
     print(f"Chopping complete! n Old Walks: {len(old_walks)}, n New Walks: {len(new_walks)}, n +ve telomeric regions: {rep1_count}, n -ve telomeric regions: {rep2_count}")
     return new_walks, telo_ref
 
-def add_ghosts(old_walks, paf_data, r2n, r2s, n2s, old_graph, walk_valid_p):
+def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, walk_valid_p):
     """
     Adds nodes and edges from the PAF and graph.
 
@@ -309,7 +310,10 @@ def add_ghosts(old_walks, paf_data, r2n, r2s, n2s, old_graph, walk_valid_p):
                     ol_sim=n[3]
                 ))
 
-            seq = r2s[read_id][0] if orient == '+' else r2s[read_id][1]
+            if orient == '+':
+                seq, _ = get_seqs(read_id, hifi_r2s, ul_r2s)
+            else:
+                _, seq = get_seqs(read_id, hifi_r2s, ul_r2s)
             n2s_ghost[n_id] = seq
             n_id += 1
             added_nodes_count += 1
@@ -855,11 +859,11 @@ def postprocess(name, hyperparams, paths):
         n2s = pickle.load(f)
     with open(paths['r2n'], 'rb') as f:
         r2n = pickle.load(f)
-    with open(paths['r2s'], 'rb') as f:
-        r2s = pickle.load(f)
     with open(paths['paf_processed'], 'rb') as f:
         paf_data = pickle.load(f)
     old_graph = dgl.load_graphs(paths['graph']+f'{name}.dgl')[0][0]
+    hifi_r2s = Fasta(paths['ec_reads'], as_raw=True)
+    ul_r2s = Fasta(paths['ul_reads'], as_raw=True) if paths['ul_reads'] else None
 
     print(f"Chopping old walks... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     if hyperparams['use_telomere_info']:
@@ -873,7 +877,8 @@ def postprocess(name, hyperparams, paths):
         old_walks=walks,
         paf_data=paf_data,
         r2n=r2n,
-        r2s=r2s,
+        hifi_r2s=hifi_r2s,
+        ul_r2s=ul_r2s,
         n2s=n2s,
         old_graph=old_graph,
         walk_valid_p=hyperparams['walk_valid_p']

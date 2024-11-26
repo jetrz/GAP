@@ -2,8 +2,9 @@ from Bio import Seq, SeqIO
 from collections import defaultdict
 from datetime import datetime
 import pickle
+from pyfaidx import Fasta
 
-from misc.utils import asm_metrics, timedelta_to_str
+from misc.utils import asm_metrics, get_seqs, timedelta_to_str
 
 def hifiasm_decoding(paths):
     time_start = datetime.now()
@@ -17,10 +18,10 @@ def hifiasm_decoding(paths):
             if row[0] != "A": continue
             c2r[row[1]].append(row)
 
-    with open(paths['r2s'], 'rb') as f:
-        r2s = pickle.load(f)
     with open(paths['r2n'], 'rb') as f:
         r2n = pickle.load(f)
+    hifi_r2s = Fasta(paths['ec_reads'], as_raw=True)
+    ul_r2s = Fasta(paths['ul_reads'], as_raw=True) if paths['ul_reads'] else None
 
     print(f"Generating contigs... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     contigs, walks = [], []
@@ -30,11 +31,11 @@ def hifiasm_decoding(paths):
         # Remove "Ns" from the start and end of a contig
         while True:
             curr_row = reads[-1]
-            if curr_row[4] != "Ns": break
+            if curr_row[4] != "Ns" and curr_row[4] != "scaf": break
             reads.pop()
         while True:
             curr_row = reads[0]
-            if curr_row[4] != "Ns": break
+            if curr_row[4] != "Ns" and curr_row[4] != "scaf": break
             reads.pop(0)
 
         c_seq, c_walk = "", []
@@ -43,12 +44,15 @@ def hifiasm_decoding(paths):
             curr_read = curr_row[4]
             
             # Handling of scaffolded regions
-            if curr_read == "Ns":
+            if curr_read == "Ns" or curr_read == "scaf":
                 curr_n_len = int(next_row[2])-int(curr_row[2])
                 src_seq = "N"*int(curr_n_len)
                 curr_read = f"custom_n_{curr_n_len}"
             else:
-                src_seq = r2s[curr_read][0] if curr_row[3] == "+" else r2s[curr_read][1]
+                if curr_row[3] == "+":
+                    src_seq, _ = get_seqs(curr_read, hifi_r2s, ul_r2s)
+                else:
+                    _, src_seq = get_seqs(curr_read, hifi_r2s, ul_r2s)
 
             src_seq = src_seq[int(curr_row[5]):int(curr_row[6])]
             curr_prefix = int(next_row[2])-int(curr_row[2])
@@ -58,7 +62,10 @@ def hifiasm_decoding(paths):
             c_walk.append(curr_node)
 
         curr_row = reads[-1]
-        src_seq = r2s[curr_row[4]][0] if curr_row[3] == "+" else r2s[curr_row[4]][1]
+        if curr_row[3] == "+":
+            src_seq, _ = get_seqs(curr_row[4], hifi_r2s, ul_r2s)
+        else:
+            _, src_seq = get_seqs(curr_row[4], hifi_r2s, ul_r2s)
         c_seq += src_seq[int(curr_row[5]):int(curr_row[6])]
         c_seq = Seq.Seq(c_seq)
         c_seq = SeqIO.SeqRecord(c_seq)
