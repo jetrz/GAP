@@ -2,17 +2,17 @@ run:
   preprocessing:
     source: 'hifiasm'
     genomes:
-      - 'hg002_d_20x_scaf_p'
-      - 'hg002_d_20x_scaf_m'
+      - 'hg002_d_ul_20x_scaf_p'
+      - 'hg002_d_ul_20x_scaf_m'
   generate_baseline:
     source: 'hifiasm'
     genomes:
-      - 'hg002_d_20x_scaf_p'
-      - 'hg002_d_20x_scaf_m'
+      - 'hg002_d_ul_20x_scaf_p'
+      - 'hg002_d_ul_20x_scaf_m'
   postprocessing:
     genomes:
-      - 'hg002_d_20x_scaf_p'
-      - 'hg002_d_20x_scaf_m'
+      - 'hg002_d_ul_20x_scaf_p'
+      - 'hg002_d_ul_20x_scaf_m'
 
 postprocessing:
   walk_valid_p: 0.0025
@@ -725,7 +725,7 @@ genome_info:
       - 'CCCTAA'
     paths:
       ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_d_ul_20x/hg002_d_ul_20x.ec.fa'
-      ul_reads: '/mnt/sod2-project/csb4/wgs/lindehui/EVAL/HG002/HG002.all.fasta.gz'
+      ul_reads: '/mnt/sod2-project/csb4/wgs/lindehui/EVAL/HG002/HG002.all.fasta.bgz'
       gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_d_ul_20x/hg002_d_ul_20x.dip.hap1.p_ctg.gfa'
       baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_ul_20x_p/'
       graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_20x_p/'
@@ -742,7 +742,7 @@ genome_info:
       - 'CCCTAA'
     paths:
       ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_d_ul_20x/hg002_d_ul_20x.ec.fa'
-      ul_reads: '/mnt/sod2-project/csb4/wgs/lindehui/EVAL/HG002/HG002.all.fasta.gz'
+      ul_reads: '/mnt/sod2-project/csb4/wgs/lindehui/EVAL/HG002/HG002.all.fasta.bgz'
       gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_d_ul_20x/hg002_d_ul_20x.dip.hap2.p_ctg.gfa'
       baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_ul_20x_m/'
       graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_20x_m/'
@@ -759,7 +759,7 @@ genome_info:
       - 'CCCTAA'
     paths:
       ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_d_ul_20x_scaf/hg002_d_ul_20x_scaf.ec.fa'
-      ul_reads: '/mnt/sod2-project/csb4/wgs/lindehui/EVAL/HG002/HG002.all.fasta.gz'
+      ul_reads: '/mnt/sod2-project/csb4/wgs/lindehui/EVAL/HG002/HG002.all.fasta.bgz'
       gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_d_ul_20x_scaf/hg002_d_ul_20x_scaf.dip.hap1.p_ctg.gfa'
       baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_ul_20x_scaf_p/'
       graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_20x_scaf_p/'
@@ -776,7 +776,7 @@ genome_info:
       - 'CCCTAA'
     paths:
       ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_d_ul_20x_scaf/hg002_d_ul_20x_scaf.ec.fa'
-      ul_reads: '/mnt/sod2-project/csb4/wgs/lindehui/EVAL/HG002/HG002.all.fasta.gz'
+      ul_reads: '/mnt/sod2-project/csb4/wgs/lindehui/EVAL/HG002/HG002.all.fasta.bgz'
       gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_d_ul_20x_scaf/hg002_d_ul_20x_scaf.dip.hap2.p_ctg.gfa'
       baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_ul_20x_scaf_m/'
       graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_20x_scaf_m/'
