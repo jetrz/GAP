@@ -4,10 +4,6 @@ import gzip
 from multiprocessing import Pool
 from tqdm import tqdm
 
-#################################################
-# THE FUNCTIONS IN THIS FILE ARE NO LONGER USED #
-#################################################
-
 def parse_read(read):
     seqs = (str(read.seq), str(Seq(read.seq).reverse_complement()))
     return read.id, seqs

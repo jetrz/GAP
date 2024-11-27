@@ -1,13 +1,12 @@
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
-import edlib
+import edlib, gc
 from multiprocessing import Pool
 from tqdm import tqdm
 
-from misc.utils import get_seqs
+from preprocess.fasta_util import parse_fasta
 
-HIFI_R2S, UL_R2S, R2N, SUCCESSOR_DICT, N2R, READS_PARSED = None, None, None, None, None, set()
+R2S, R2N, SUCCESSOR_DICT, N2R, READS_PARSED = None, None, None, None, set()
 
 # We have to do this because cannot pickle defaultdicts created by lambda
 def create_list_dd():
@@ -253,7 +252,7 @@ def parse_row(row):
     '''
     data = None
 
-    if not HIFI_R2S or not R2N or not N2R or not SUCCESSOR_DICT or not READS_PARSED:
+    if not R2S or not R2N or not N2R or not SUCCESSOR_DICT or not READS_PARSED:
         raise ValueError("Global objects not set!")
 
     row_split = row.strip().split()
@@ -296,14 +295,11 @@ def parse_row(row):
         return 3, row
 
     if src[1] == '+' and dst[1] == '+':
-        src_seq, _ = get_seqs(src_id, HIFI_R2S, UL_R2S)
-        dst_seq, _ = get_seqs(dst_id, HIFI_R2S, UL_R2S)
+        src_seq, dst_seq = R2S[src_id][0], R2S[dst_id][0]
     elif src[1] == '+' and dst[1] == '-':
-        src_seq, _ = get_seqs(src_id, HIFI_R2S, UL_R2S)
-        _, dst_seq = get_seqs(dst_id, HIFI_R2S, UL_R2S)
+        src_seq, dst_seq = R2S[src_id][0], R2S[dst_id][1]
     elif src[1] == '-' and dst[1] == '+':
-        _, src_seq = get_seqs(src_id, HIFI_R2S, UL_R2S)
-        dst_seq, _ = get_seqs(dst_id, HIFI_R2S, UL_R2S)
+        src_seq, dst_seq = R2S[src_id][1], R2S[dst_id][0]
     else:
         raise Exception("Unrecognised orientation pairing.")
 
@@ -394,7 +390,7 @@ def parse_row(row):
 
         return 2, data
 
-def parse_paf(paf_path, aux):
+def parse_paf(paths, aux):
     '''
     paf_data = {
         ghost_edges = {
@@ -430,9 +426,12 @@ def parse_paf(paf_path, aux):
     '''
     print("Parsing paf file...")
     
-    global HIFI_R2S, UL_R2S, R2N, SUCCESSOR_DICT, N2R, READS_PARSED
+    global R2S, R2N, SUCCESSOR_DICT, N2R, READS_PARSED
     R2N, SUCCESSOR_DICT, N2R, READS_PARSED = aux['r2n'], aux['successor_dict'], aux['n2r'], set()
-    HIFI_R2S, UL_R2S = aux['hifi_r2s'], aux['ul_r2s']
+
+    print("Generating r2s...")
+    R2S = parse_fasta(paths['ec_reads'])
+    if paths['ul_reads']: R2S.update(parse_fasta(paths['ul_reads']))
 
     for c_n_id in sorted(N2R.keys()):
         if c_n_id % 2 != 0: continue # Skip all virtual nodes
@@ -442,7 +441,7 @@ def parse_paf(paf_path, aux):
         else:
             READS_PARSED.add(read_id)
 
-    with open(paf_path) as f:
+    with open(paths['paf']) as f:
         rows = f.readlines()
 
     rows = preprocess_rows(rows)
@@ -458,9 +457,9 @@ def parse_paf(paf_path, aux):
         print(f"Starting run for Hop {hop}. nrows: {len(curr_rows)}, cutoff: {cutoff}")
         curr_ghost_info = {'+':defaultdict(create_list_dd), '-':defaultdict(create_list_dd)}
 
-        with ThreadPoolExecutor(max_workers=40) as executor:
-            results = tqdm(executor.map(parse_row, curr_rows), total=len(curr_rows), ncols=120)
-            for code, data in results:
+        with Pool(40) as pool:
+            results = pool.imap_unordered(parse_row, iter(curr_rows), chunksize=160)
+            for code, data in tqdm(results, total=len(curr_rows), ncols=120):
                 if code == 0: 
                     continue
                 elif code == 1:
@@ -501,6 +500,9 @@ def parse_paf(paf_path, aux):
         },
         'ghost_nodes' : ghosts
     }
+
+    del R2S
+    gc.collect()
 
     return data
 

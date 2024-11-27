@@ -34,7 +34,7 @@ def run_preprocessing(config):
         dgl.save_graphs(genome_info['paths']['graph']+f'{genome}.dgl', [dgl_g])
 
         print(f"Processing PAF... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-        paf_data = parse_paf(genome_info['paths']['paf'], aux)
+        paf_data = parse_paf(genome_info['paths'], aux)
         with open(genome_info['paths']['paf_processed'], "wb") as p:
             pickle.dump(paf_data, p)
 
