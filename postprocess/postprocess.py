@@ -828,7 +828,7 @@ def get_contigs(old_walks, new_walks, adj_list, n2s, n2s_ghost, g):
 
     return contigs
 
-def postprocess(name, hyperparams, paths, walks, aux):
+def postprocess(name, hyperparams, paths, aux):
     """
     (\(\        \|/        /)/)
     (  ^.^)     -o-     (^.^  )
