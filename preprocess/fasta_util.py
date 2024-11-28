@@ -15,6 +15,11 @@ def parse_fasta(path):
             filetype = 'fasta'
         elif path.endswith('fastq.gz') or path.endswith('fnq.gz') or path.endswith('fq.gz'):
             filetype = 'fastq'
+    elif path.endswith('bgz'):
+        if path.endswith('fasta.bgz') or path.endswith('fna.bgz') or path.endswith('fa.bgz'):
+            filetype = 'fasta'
+        elif path.endswith('fastq.bgz') or path.endswith('fnq.bgz') or path.endswith('fq.bgz'):
+            filetype = 'fastq'
     else:
         if path.endswith('fasta') or path.endswith('fna') or path.endswith('fa'):
             filetype = 'fasta'
