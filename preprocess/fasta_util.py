@@ -1,4 +1,4 @@
-from Bio import SeqIO
+from Bio import bgzf, SeqIO
 from Bio.Seq import Seq
 import gzip
 from multiprocessing import Pool
@@ -10,27 +10,29 @@ def parse_read(read):
 
 def parse_fasta(path):
     print(f"Parsing {path}...")
-    if path.endswith('gz'):
-        if path.endswith('fasta.gz') or path.endswith('fna.gz') or path.endswith('fa.gz'):
-            filetype = 'fasta'
-        elif path.endswith('fastq.gz') or path.endswith('fnq.gz') or path.endswith('fq.gz'):
-            filetype = 'fastq'
-    elif path.endswith('bgz'):
+
+    if path.endswith('bgz'):
         if path.endswith('fasta.bgz') or path.endswith('fna.bgz') or path.endswith('fa.bgz'):
             filetype = 'fasta'
         elif path.endswith('fastq.bgz') or path.endswith('fnq.bgz') or path.endswith('fq.bgz'):
             filetype = 'fastq'
+        open_func = bgzf.open
+    elif path.endswith('gz'):
+        if path.endswith('fasta.gz') or path.endswith('fna.gz') or path.endswith('fa.gz'):
+            filetype = 'fasta'
+        elif path.endswith('fastq.gz') or path.endswith('fnq.gz') or path.endswith('fq.gz'):
+            filetype = 'fastq'
+        open_func = gzip.open
     else:
         if path.endswith('fasta') or path.endswith('fna') or path.endswith('fa'):
             filetype = 'fasta'
         elif path.endswith('fastq') or path.endswith('fnq') or path.endswith('fq'):
             filetype = 'fastq'
+        open_func = open
 
     data = {}
-    open_func = gzip.open if path.endswith('.gz') else open
     with open_func(path, 'rt') as handle:
         rows = SeqIO.parse(handle, filetype)
-
         with Pool(15) as pool:
             results = pool.imap_unordered(parse_read, rows, chunksize=50)
             for id, seqs in tqdm(results, ncols=120):
