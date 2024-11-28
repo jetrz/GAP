@@ -2,17 +2,17 @@ run:
   preprocessing:
     source: 'hifiasm'
     genomes:
-      - 'hg002_d_ul_20x_scaf_p'
-      - 'hg002_d_ul_20x_scaf_m'
+      - 'bonobo_d_ul_20x_scaf_p'
+      - 'bonobo_d_ul_20x_scaf_m'
   generate_baseline:
     source: 'hifiasm'
     genomes:
-      - 'hg002_d_ul_20x_scaf_p'
-      - 'hg002_d_ul_20x_scaf_m'
+      - 'bonobo_d_ul_20x_scaf_p'
+      - 'bonobo_d_ul_20x_scaf_m'
   postprocessing:
     genomes:
-      - 'hg002_d_ul_20x_scaf_p'
-      - 'hg002_d_ul_20x_scaf_m'
+      - 'bonobo_d_ul_20x_scaf_p'
+      - 'bonobo_d_ul_20x_scaf_m'
 
 postprocessing:
   walk_valid_p: 0.0025
@@ -861,7 +861,7 @@ genome_info:
       - 'CCCTAA'
     paths:
       ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/bonobo_d_ul_20x_scaf/bonobo_d_ul_20x_scaf.ec.fa'
-      ul_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/datasets/bonobo_ont/bonobo_ont.fastq.bgz'
+      ul_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/datasets/bonobo_ont/bonobo_ont.fasta'
       gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/bonobo_d_ul_20x_scaf/bonobo_d_ul_20x_scaf.dip.hap1.p_ctg.gfa'
       baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_d_ul_20x_scaf_p/'
       graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_ul_20x_scaf_p/'
@@ -878,7 +878,7 @@ genome_info:
       - 'CCCTAA'
     paths:
       ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/bonobo_d_ul_20x_scaf/bonobo_d_ul_20x_scaf.ec.fa'
-      ul_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/datasets/bonobo_ont/bonobo_ont.fastq.bgz'
+      ul_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/datasets/bonobo_ont/bonobo_ont.fasta'
       gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/bonobo_d_ul_20x_scaf/bonobo_d_ul_20x_scaf.dip.hap2.p_ctg.gfa'
       baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_d_ul_20x_scaf_m/'
       graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_ul_20x_scaf_m/'
@@ -895,7 +895,7 @@ genome_info:
       - 'CCCTAA'
     paths:
       ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/bonobo_d_ul_20x/bonobo_d_ul_20x.ec.fa'
-      ul_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/datasets/bonobo_ont/bonobo_ont.fastq.bgz'
+      ul_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/datasets/bonobo_ont/bonobo_ont.fasta'
       gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/bonobo_d_ul_20x/bonobo_d_ul_20x.dip.hap1.p_ctg.gfa'
       baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_d_ul_20x_p/'
       graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_ul_20x_p/'
@@ -912,7 +912,7 @@ genome_info:
       - 'CCCTAA'
     paths:
       ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/bonobo_d_ul_20x/bonobo_d_ul_20x.ec.fa'
-      ul_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/datasets/bonobo_ont/bonobo_ont.fastq.bgz'
+      ul_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/datasets/bonobo_ont/bonobo_ont.fasta'
       gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/bonobo_d_ul_20x/bonobo_d_ul_20x.dip.hap2.p_ctg.gfa'
       baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_d_ul_20x_m/'
       graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_ul_20x_m/'
