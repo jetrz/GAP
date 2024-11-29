@@ -923,6 +923,6 @@ def run_postprocessing(config):
         # postprocess(genome, hyperparams=postprocessing_config, paths=paths)
         for use_telomere_info in [True, False]:
             postprocessing_config['use_telomere_info'] = use_telomere_info
-            for w in [0.0025]:
+            for w in [0.005, 0.0025, 0.001]:
                 postprocessing_config['walk_valid_p'] = w
                 postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux)
