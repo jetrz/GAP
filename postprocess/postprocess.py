@@ -5,7 +5,7 @@ from copy import deepcopy
 from datetime import datetime
 from pyfaidx import Fasta
 
-from misc.utils import asm_metrics, get_seqs, timedelta_to_str
+from misc.utils import asm_metrics, get_seqs, timedelta_to_str, yak_metrics
 
 class Edge():
     def __init__(self, new_src_nid, new_dst_nid, old_src_nid, old_dst_nid, prefix_len, ol_len, ol_sim):
@@ -893,6 +893,7 @@ def postprocess(name, hyperparams, paths, aux):
 
     print(f"Calculating assembly metrics... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     asm_metrics(contigs, paths['save'], paths['ref'], paths['minigraph'], paths['paftools'])
+    if paths['yak1'] and paths['yak2']: yak_metrics(paths['save'], paths['yak1'], paths['yak2'], paths['yak'])
 
     print(f"Run finished! (Time: {timedelta_to_str(datetime.now() - time_start)})")
     return
@@ -922,6 +923,6 @@ def run_postprocessing(config):
         # postprocess(genome, hyperparams=postprocessing_config, paths=paths)
         for use_telomere_info in [True, False]:
             postprocessing_config['use_telomere_info'] = use_telomere_info
-            for w in [0.005, 0.0025, 0.001]:
+            for w in [0.0025]:
                 postprocessing_config['walk_valid_p'] = w
                 postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux)

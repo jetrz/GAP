@@ -4,7 +4,7 @@ from datetime import datetime
 import dgl, math, pickle, os, random, torch
 
 from .SymGatedGCN import SymGatedGCNModel
-from misc.utils import asm_metrics, timedelta_to_str
+from misc.utils import asm_metrics, timedelta_to_str, yak_metrics
 
 # Hardcoded values for feature normalisation
 STDS_AND_MEANS = {
@@ -361,6 +361,7 @@ def gnnome_decoding(genome, gnnome_config, paths):
 
     print(f"Calculating assembly metrics... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     asm_metrics(contigs, save_path, paths['ref'], paths['minigraph'], paths['paftools'])
+    if paths['yak1'] and paths['yak2']: yak_metrics(save_path, paths['yak1'], paths['yak2'], paths['yak'])
 
     print(f"Run finished! (Time: {timedelta_to_str(datetime.now() - time_start)})")
     return

@@ -1,18 +1,20 @@
 run:
   preprocessing:
     source: 'hifiasm'
-    genomes:
-      - 'bonobo_d_ul_20x_scaf_p'
-      - 'bonobo_d_ul_20x_scaf_m'
+    genomes: ~
   generate_baseline:
     source: 'hifiasm'
-    genomes:
-      - 'bonobo_d_ul_20x_scaf_p'
-      - 'bonobo_d_ul_20x_scaf_m'
+    genomes: ~
   postprocessing:
     genomes:
-      - 'bonobo_d_ul_20x_scaf_p'
-      - 'bonobo_d_ul_20x_scaf_m'
+      - 'hg002_d_20x_p'
+      - 'hg002_d_20x_m'
+      - 'hg002_d_20x_scaf_p'
+      - 'hg002_d_20x_scaf_m'
+      - 'bonobo_d_20x_p'
+      - 'bonobo_d_20x_m'
+      - 'bonobo_d_20x_scaf_p'
+      - 'bonobo_d_20x_scaf_m'
 
 postprocessing:
   walk_valid_p: 0.0025
@@ -26,6 +28,7 @@ misc:
     seqtk: '/home/stumanuel/GitHub/seqtk/seqtk'
     minigraph: '/home/stumanuel/GitHub/minigraph/minigraph'
     paftools: '/home/stumanuel/GitHub/minimap2/misc/paftools.js'
+    yak: '/home/stumanuel/GitHub/yak/yak'
 
 
 
@@ -49,6 +52,8 @@ misc:
 #       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/arab/arab_r2n.pkl'
 #       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/arab/'
 #       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/arab/walks.pkl' # Ensure this aligns with baseline
+#       yak1: ~
+#       yak2: ~
 #   chicken:
 #     telo_motifs:
 #       - 'TTAGGG'
@@ -66,6 +71,8 @@ misc:
 #       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/chicken/chicken_r2n.pkl'
 #       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/chicken/'
 #       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/chicken/walks.pkl' # Ensure this aligns with baseline
+#       yak1: ~
+#       yak2: ~
 #   chm13:
 #     telo_motifs:
 #       - 'TTAGGG'
@@ -83,6 +90,8 @@ misc:
 #       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/chm13/chm13_r2n.pkl'
 #       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/chm13/'
 #       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/chm13/walks.pkl' # Ensure this aligns with baseline
+#       yak1: ~
+#       yak2: ~
 #   maize:
 #     telo_motifs:
 #       - 'TTTAGGG'
@@ -100,6 +109,8 @@ misc:
 #       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/maize/maize_r2n.pkl'
 #       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/maize/'
 #       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/maize/walks.pkl' # Ensure this aligns with baseline
+#       yak1: ~
+#       yak2: ~
 #   maize-50p:
 #     telo_motifs:
 #       - 'TTTAGGG'
@@ -117,6 +128,8 @@ misc:
 #       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/maize-50p/maize-50p_r2n.pkl'
 #       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/maize-50p/'
 #       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/maize-50p/walks.pkl' # Ensure this aligns with baseline
+#       yak1: ~
+#       yak2: ~
 #   mouse:
 #     telo_motifs:
 #       - 'TTAGGG'
@@ -134,6 +147,8 @@ misc:
 #       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/mouse/mouse_r2n.pkl'
 #       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/mouse/'
 #       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/mouse/walks.pkl' # Ensure this aligns with baseline
+#       yak1: ~
+#       yak2: ~
 #   hg002_20x_p:
 #     telo_motifs:
 #       - 'TTAGGG'
@@ -151,6 +166,8 @@ misc:
 #       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/hg002_20x_p/hg002_20x_p_r2n.pkl'
 #       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/hg002_20x_p/'
 #       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/hg002_20x_p/walks.pkl' # Ensure this aligns with baseline
+#       yak1: ~
+#       yak2: ~
 #   hg002_20x_m:
 #     telo_motifs:
 #       - 'TTAGGG'
@@ -168,6 +185,8 @@ misc:
 #       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/hg002_20x_m/hg002_20x_m_r2n.pkl'
 #       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/hg002_20x_m/'
 #       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/hg002_20x_m/walks.pkl' # Ensure this aligns with baseline
+#       yak1: ~
+#       yak2: ~
 #   hg002_30x_p:
 #     telo_motifs:
 #       - 'TTAGGG'
@@ -185,6 +204,8 @@ misc:
 #       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/hg002_30x_p/hg002_30x_p_r2n.pkl'
 #       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/hg002_30x_p/'
 #       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/hg002_30x_p/walks.pkl' # Ensure this aligns with baseline
+#       yak1: ~
+#       yak2: ~
 #   hg002_30x_m:
 #     telo_motifs:
 #       - 'TTAGGG'
@@ -202,6 +223,8 @@ misc:
 #       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/hg002_30x_m/hg002_30x_m_r2n.pkl'
 #       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/hg002_30x_m/'
 #       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/hg002_30x_m/walks.pkl' # Ensure this aligns with baseline
+#       yak1: ~
+#       yak2: ~
 #   gorilla_20x_p:
 #     telo_motifs:
 #       - 'TTAGGG'
@@ -219,6 +242,8 @@ misc:
 #       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/gorilla_20x_p/gorilla_20x_p_r2n.pkl'
 #       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/gorilla_20x_p/'
 #       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/gorilla_20x_p/walks.pkl' # Ensure this aligns with baseline
+#       yak1: ~
+#       yak2: ~
 #   gorilla_20x_m:
 #     telo_motifs:
 #       - 'TTAGGG'
@@ -236,6 +261,8 @@ misc:
 #       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/gorilla_20x_m/gorilla_20x_m_r2n.pkl'
 #       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/gorilla_20x_m/'
 #       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/gorilla_20x_m/walks.pkl' # Ensure this aligns with baseline
+#       yak1: ~
+#       yak2: ~
 #   gorilla_30x_p:
 #     telo_motifs:
 #       - 'TTAGGG'
@@ -253,6 +280,8 @@ misc:
 #       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/gorilla_30x_p/gorilla_30x_p_r2n.pkl'
 #       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/gorilla_30x_p/'
 #       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/gorilla_30x_p/walks.pkl' # Ensure this aligns with baseline
+#       yak1: ~
+#       yak2: ~
 #   gorilla_30x_m:
 #     telo_motifs:
 #       - 'TTAGGG'
@@ -270,6 +299,8 @@ misc:
 #       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/gorilla_30x_m/gorilla_30x_m_r2n.pkl'
 #       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/gorilla_30x_m/'
 #       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/gorilla_30x_m/walks.pkl' # Ensure this aligns with baseline
+#       yak1: ~
+#       yak2: ~
 #   bonobo_20x_p:
 #     telo_motifs:
 #       - 'TTAGGG'
@@ -287,6 +318,8 @@ misc:
 #       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/bonobo_20x_p/bonobo_20x_p_r2n.pkl'
 #       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/bonobo_20x_p/'
 #       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/bonobo_20x_p/walks.pkl' # Ensure this aligns with baseline
+#       yak1: ~
+#       yak2: ~
 #   bonobo_20x_m:
 #     telo_motifs:
 #       - 'TTAGGG'
@@ -304,6 +337,8 @@ misc:
 #       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/bonobo_20x_m/bonobo_20x_m_r2n.pkl'
 #       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/bonobo_20x_m/'
 #       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/bonobo_20x_m/walks.pkl' # Ensure this aligns with baseline
+#       yak1: ~
+#       yak2: ~
 #   bonobo_30x_p:
 #     telo_motifs:
 #       - 'TTAGGG'
@@ -321,6 +356,8 @@ misc:
 #       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/bonobo_30x_p/bonobo_30x_p_r2n.pkl'
 #       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/bonobo_30x_p/'
 #       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/bonobo_30x_p/walks.pkl' # Ensure this aligns with baseline
+#       yak1: ~
+#       yak2: ~
 #   bonobo_30x_m:
 #     telo_motifs:
 #       - 'TTAGGG'
@@ -338,6 +375,8 @@ misc:
 #       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/GNNome/bonobo_30x_m/bonobo_30x_m_r2n.pkl'
 #       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/GNNome/bonobo_30x_m/'
 #       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/GNNome/bonobo_30x_m/walks.pkl' # Ensure this aligns with baseline
+#       yak1: ~
+#       yak2: ~
 
 
 
@@ -362,6 +401,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/arab/arab_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/arab/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/arab/walks.pkl' # Ensure this aligns with baseline
+      yak1: ~
+      yak2: ~
   chicken:
     telo_motifs:
       - 'TTAGGG'
@@ -379,6 +420,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/chicken/chicken_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/chicken/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/chicken/walks.pkl' # Ensure this aligns with baseline
+      yak1: ~
+      yak2: ~
   chm13:
     telo_motifs:
       - 'TTAGGG'
@@ -396,6 +439,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/chm13/chm13_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/chm13/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/chm13/walks.pkl' # Ensure this aligns with baseline
+      yak1: ~
+      yak2: ~
   maize:
     telo_motifs:
       - 'TTTAGGG'
@@ -413,6 +458,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/maize/maize_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/maize/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/maize/walks.pkl' # Ensure this aligns with baseline
+      yak1: ~
+      yak2: ~
   maize-50p:
     telo_motifs:
       - 'TTTAGGG'
@@ -430,6 +477,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/maize-50p/maize-50p_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/maize-50p/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/maize-50p/walks.pkl' # Ensure this aligns with baseline
+      yak1: ~
+      yak2: ~
   mouse:
     telo_motifs:
       - 'TTAGGG'
@@ -447,6 +496,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/mouse/mouse_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/mouse/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/mouse/walks.pkl' # Ensure this aligns with baseline
+      yak1: ~
+      yak2: ~
   hg002_20x_p:
     telo_motifs:
       - 'TTAGGG'
@@ -464,6 +515,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_20x_p/hg002_20x_p_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/hg002_20x_p/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_20x_p/walks.pkl' # Ensure this aligns with baseline
+      yak1: ~
+      yak2: ~
   hg002_20x_m:
     telo_motifs:
       - 'TTAGGG'
@@ -481,6 +534,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_20x_m/hg002_20x_m_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/hg002_20x_m/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_20x_m/walks.pkl' # Ensure this aligns with baseline
+      yak1: ~
+      yak2: ~
   hg002_30x_p:
     telo_motifs:
       - 'TTAGGG'
@@ -498,6 +553,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_30x_p/hg002_30x_p_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/hg002_30x_p/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_30x_p/walks.pkl' # Ensure this aligns with baseline
+      yak1: ~
+      yak2: ~
   hg002_30x_m:
     telo_motifs:
       - 'TTAGGG'
@@ -515,6 +572,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_30x_m/hg002_30x_m_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/hg002_30x_m/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_30x_m/walks.pkl' # Ensure this aligns with baseline
+      yak1: ~
+      yak2: ~
   gorilla_20x_p:
     telo_motifs:
       - 'TTAGGG'
@@ -532,6 +591,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/gorilla_20x_p/gorilla_20x_p_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/gorilla_20x_p/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/gorilla_20x_p/walks.pkl' # Ensure this aligns with baseline
+      yak1: ~
+      yak2: ~
   gorilla_20x_m:
     telo_motifs:
       - 'TTAGGG'
@@ -549,6 +610,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/gorilla_20x_m/gorilla_20x_m_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/gorilla_20x_m/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/gorilla_20x_m/walks.pkl' # Ensure this aligns with baseline
+      yak1: ~
+      yak2: ~
   gorilla_30x_p:
     telo_motifs:
       - 'TTAGGG'
@@ -566,6 +629,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/gorilla_30x_p/gorilla_30x_p_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/gorilla_30x_p/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/gorilla_30x_p/walks.pkl' # Ensure this aligns with baseline
+      yak1: ~
+      yak2: ~
   gorilla_30x_m:
     telo_motifs:
       - 'TTAGGG'
@@ -583,6 +648,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/gorilla_30x_m/gorilla_30x_m_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/gorilla_30x_m/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/gorilla_30x_m/walks.pkl' # Ensure this aligns with baseline
+      yak1: ~
+      yak2: ~
   bonobo_20x_p:
     telo_motifs:
       - 'TTAGGG'
@@ -600,6 +667,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_20x_p/bonobo_20x_p_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/bonobo_20x_p/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_20x_p/walks.pkl' # Ensure this aligns with baseline
+      yak1: ~
+      yak2: ~
   bonobo_20x_m:
     telo_motifs:
       - 'TTAGGG'
@@ -617,6 +686,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_20x_m/bonobo_20x_m_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/bonobo_20x_m/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_20x_m/walks.pkl' # Ensure this aligns with baseline
+      yak1: ~
+      yak2: ~
   bonobo_30x_p:
     telo_motifs:
       - 'TTAGGG'
@@ -634,6 +705,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_30x_p/bonobo_30x_p_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/bonobo_30x_p/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_30x_p/walks.pkl' # Ensure this aligns with baseline
+      yak1: ~
+      yak2: ~
   bonobo_30x_m:
     telo_motifs:
       - 'TTAGGG'
@@ -651,6 +724,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_30x_m/bonobo_30x_m_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/bonobo_30x_m/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_30x_m/walks.pkl' # Ensure this aligns with baseline
+      yak1: ~
+      yak2: ~
   hg002_d_20x_p:
     telo_motifs:
       - 'TTAGGG'
@@ -668,6 +743,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_20x_p/hg002_d_20x_p_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/hg002_d_20x_p/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_20x_p/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/pat.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/mat.yak'
   hg002_d_20x_m:
     telo_motifs:
       - 'TTAGGG'
@@ -685,6 +762,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_20x_m/hg002_d_20x_m_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/hg002_d_20x_m/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_20x_m/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/pat.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/mat.yak'
   hg002_d_20x_scaf_p:
     telo_motifs:
       - 'TTAGGG'
@@ -702,6 +781,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_20x_scaf_p/hg002_d_20x_scaf_p_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/hg002_d_20x_scaf_p/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_20x_scaf_p/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/pat.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/mat.yak'
   hg002_d_20x_scaf_m:
     telo_motifs:
       - 'TTAGGG'
@@ -719,6 +800,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_20x_scaf_m/hg002_d_20x_scaf_m_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/hg002_d_20x_scaf_m/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_20x_scaf_m/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/pat.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/mat.yak'
   hg002_d_ul_20x_p:
     telo_motifs:
       - 'TTAGGG'
@@ -736,6 +819,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_20x_p/hg002_d_ul_20x_p_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/hg002_d_ul_20x_p/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_ul_20x_p/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/pat.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/mat.yak'
   hg002_d_ul_20x_m:
     telo_motifs:
       - 'TTAGGG'
@@ -753,6 +838,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_20x_m/hg002_d_ul_20x_m_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/hg002_d_ul_20x_m/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_ul_20x_m/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/pat.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/mat.yak'
   hg002_d_ul_20x_scaf_p:
     telo_motifs:
       - 'TTAGGG'
@@ -770,6 +857,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_20x_scaf_p/hg002_d_ul_20x_scaf_p_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/hg002_d_ul_20x_scaf_p/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_ul_20x_scaf_p/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/pat.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/mat.yak'
   hg002_d_ul_20x_scaf_m:
     telo_motifs:
       - 'TTAGGG'
@@ -787,6 +876,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_20x_scaf_m/hg002_d_ul_20x_scaf_m_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/hg002_d_ul_20x_scaf_m/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_ul_20x_scaf_m/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/pat.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/mat.yak'
   bonobo_d_20x_p:
     telo_motifs:
       - 'TTAGGG'
@@ -804,6 +895,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_20x_p/bonobo_d_20x_p_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/bonobo_d_20x_p/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_d_20x_p/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan2.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan3.yak'
   bonobo_d_20x_m:
     telo_motifs:
       - 'TTAGGG'
@@ -821,6 +914,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_20x_m/bonobo_d_20x_m_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/bonobo_d_20x_m/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_d_20x_m/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan2.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan3.yak'
   bonobo_d_20x_scaf_p:
     telo_motifs:
       - 'TTAGGG'
@@ -838,6 +933,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_20x_scaf_p/bonobo_d_20x_scaf_p_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/bonobo_d_20x_scaf_p/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_d_20x_scaf_p/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan2.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan3.yak'
   bonobo_d_20x_scaf_m:
     telo_motifs:
       - 'TTAGGG'
@@ -855,6 +952,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_20x_scaf_m/bonobo_d_20x_scaf_m_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/bonobo_d_20x_scaf_m/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_d_20x_scaf_m/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan2.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan3.yak'
   bonobo_d_ul_20x_scaf_p:
     telo_motifs:
       - 'TTAGGG'
@@ -872,6 +971,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_ul_20x_scaf_p/bonobo_d_ul_20x_scaf_p_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/bonobo_d_ul_20x_scaf_p/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_d_ul_20x_scaf_p/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan2.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan3.yak'
   bonobo_d_ul_20x_scaf_m:
     telo_motifs:
       - 'TTAGGG'
@@ -889,6 +990,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_ul_20x_scaf_m/bonobo_d_ul_20x_scaf_m_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/bonobo_d_ul_20x_scaf_m/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_d_ul_20x_scaf_m/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan2.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan3.yak'
   bonobo_d_ul_20x_p:
     telo_motifs:
       - 'TTAGGG'
@@ -906,6 +1009,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_ul_20x_p/bonobo_d_ul_20x_p_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/bonobo_d_ul_20x_p/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_d_ul_20x_p/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan2.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan3.yak'
   bonobo_d_ul_20x_m:
     telo_motifs:
       - 'TTAGGG'
@@ -923,6 +1028,8 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_ul_20x_m/bonobo_d_ul_20x_m_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/bonobo_d_ul_20x_m/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_d_ul_20x_m/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan2.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan3.yak'
 
 
 

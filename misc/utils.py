@@ -52,6 +52,38 @@ def asm_metrics(contigs, save_path, ref_path, minigraph_path, paftools_path):
         report = f.read()
         print(report)
 
+def yak_metrics(save_path, yak1, yak2, yak_path):
+    """
+    IMPT: asm_metrics have to be run before this to generate the assembly!
+    
+    Yak triobinning result files have following info:
+    C       F  seqName     type      startPos  endPos    count
+    C       W  #switchErr  denominator  switchErrRate
+    C       H  #hammingErr denominator  hammingErrRate
+    C       N  #totPatKmer #totMatKmer  errRate
+    """
+    print("Running yak trioeval...")
+    save_file = save_path+"phs.txt"
+    cmd = f'{yak_path} trioeval -t16 {yak1} {yak2} {save_path}0_assembly.fasta > {save_file}'.split()
+    with open(save_file, 'w') as f:
+        p = subprocess.Popen(cmd, stdout=f)
+    p.wait()
+
+    switch_err, hamming_err = None, None
+    with open(save_file, 'r') as file:
+        # Read all the lines and reverse them
+        lines = file.readlines()
+        reversed_lines = reversed(lines)
+        for line in reversed_lines:
+            if line.startswith('W'):
+                switch_err = float(line.split()[3])
+            elif line.startswith('H'):
+                hamming_err = float(line.split()[3])
+            if switch_err is not None and hamming_err is not None:
+                break
+
+    print(f"YAK Switch Err: {switch_err*100:.4f}%, YAK Hamming Err: {hamming_err*100:.4f}%")
+
 def get_seqs(id, hifi_r2s, ul_r2s):
     if id in hifi_r2s:
         return str(hifi_r2s[id][:]), str(-hifi_r2s[id][:])
