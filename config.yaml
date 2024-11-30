@@ -2,7 +2,6 @@ run:
   preprocessing:
     source: 'hifiasm'
     genomes:
-      - 'hg002_d_ul_20x_p'
       - 'hg002_d_ul_20x_m'
   generate_baseline:
     source: 'hifiasm'
@@ -876,6 +875,82 @@ genome_info:
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_ul_20x_scaf_m/walks.pkl' # Ensure this aligns with baseline
       yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/pat.yak'
       yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/mat.yak'
+  hg002_d_telo_20x_scaf_p:
+    telo_motifs:
+      - 'TTAGGG'
+      - 'CCCTAA'
+    paths:
+      ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_d_telo_20x_scaf/hg002_d_telo_20x_scaf.ec.fa'
+      ul_reads: ~
+      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_d_telo_20x_scaf/hg002_d_telo_20x_scaf.dip.hap1.p_ctg.gfa'
+      baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_telo_20x_scaf_p/'
+      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_telo_20x_scaf_p/'
+      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_telo_20x_scaf_p/hg002_d_telo_20x_scaf_p_n2s.pkl'
+      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_d_telo_20x_scaf/hg002_d_telo_20x_scaf.ovlp.paf'
+      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_telo_20x_scaf_p/hg002_d_telo_20x_scaf_p_paf_data.pkl'
+      ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/hg002v1.0.1_PATERNAL.fasta'
+      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_telo_20x_scaf_p/hg002_d_telo_20x_scaf_p_r2n.pkl'
+      save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/hg002_d_telo_20x_scaf_p/'
+      walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_telo_20x_scaf_p/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/pat.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/mat.yak'
+  hg002_d_telo_20x_scaf_m:
+    telo_motifs:
+      - 'TTAGGG'
+      - 'CCCTAA'
+    paths:
+      ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_d_telo_20x_scaf/hg002_d_telo_20x_scaf.ec.fa'
+      ul_reads: ~
+      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_d_telo_20x_scaf/hg002_d_telo_20x_scaf.dip.hap2.p_ctg.gfa'
+      baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_telo_20x_scaf_m/'
+      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_telo_20x_scaf_m/'
+      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_telo_20x_scaf_m/hg002_d_telo_20x_scaf_m_n2s.pkl'
+      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_d_telo_20x_scaf/hg002_d_telo_20x_scaf.ovlp.paf'
+      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_telo_20x_scaf_m/hg002_d_telo_20x_scaf_m_paf_data.pkl'
+      ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/hg002v1.0.1_MATERNAL.fasta'
+      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_telo_20x_scaf_m/hg002_d_telo_20x_scaf_m_r2n.pkl'
+      save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/hg002_d_telo_20x_scaf_m/'
+      walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_telo_20x_scaf_m/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/pat.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/mat.yak'
+  hg002_d_ul_telo_20x_scaf_p:
+    telo_motifs:
+      - 'TTAGGG'
+      - 'CCCTAA'
+    paths:
+      ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_d_ul_telo_20x_scaf/hg002_d_ul_telo_20x_scaf.ec.fa'
+      ul_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/datasets/hg002_ont/HG002.all.fasta.bgz'
+      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_d_ul_telo_20x_scaf/hg002_d_ul_telo_20x_scaf.dip.hap1.p_ctg.gfa'
+      baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_ul_telo_20x_scaf_p/'
+      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_telo_20x_scaf_p/'
+      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_telo_20x_scaf_p/hg002_d_ul_telo_20x_scaf_p_n2s.pkl'
+      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_d_ul_telo_20x_scaf/hg002_d_ul_telo_20x_scaf.ovlp.paf'
+      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_telo_20x_scaf_p/hg002_d_ul_telo_20x_scaf_p_paf_data.pkl'
+      ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/hg002v1.0.1_PATERNAL.fasta'
+      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_telo_20x_scaf_p/hg002_d_ul_telo_20x_scaf_p_r2n.pkl'
+      save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/hg002_d_ul_telo_20x_scaf_p/'
+      walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_ul_telo_20x_scaf_p/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/pat.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/mat.yak'
+  hg002_d_ul_telo_20x_scaf_m:
+    telo_motifs:
+      - 'TTAGGG'
+      - 'CCCTAA'
+    paths:
+      ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_d_ul_telo_20x_scaf/hg002_d_ul_telo_20x_scaf.ec.fa'
+      ul_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/datasets/hg002_ont/HG002.all.fasta.bgz'
+      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_d_ul_telo_20x_scaf/hg002_d_ul_telo_20x_scaf.dip.hap2.p_ctg.gfa'
+      baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_ul_telo_20x_scaf_m/'
+      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_telo_20x_scaf_m/'
+      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_telo_20x_scaf_m/hg002_d_ul_telo_20x_scaf_m_n2s.pkl'
+      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/hg002_d_ul_telo_20x_scaf/hg002_d_ul_telo_20x_scaf.ovlp.paf'
+      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_telo_20x_scaf_m/hg002_d_ul_telo_20x_scaf_m_paf_data.pkl'
+      ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/hg002v1.0.1_MATERNAL.fasta'
+      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/hg002_d_ul_telo_20x_scaf_m/hg002_d_ul_telo_20x_scaf_m_r2n.pkl'
+      save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/hg002_d_ul_telo_20x_scaf_m/'
+      walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/hg002_d_ul_telo_20x_scaf_m/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/pat.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/hg002_v101/mat.yak'
   bonobo_d_20x_p:
     telo_motifs:
       - 'TTAGGG'
@@ -1026,6 +1101,82 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_ul_20x_m/bonobo_d_ul_20x_m_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/bonobo_d_ul_20x_m/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_d_ul_20x_m/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan2.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan3.yak'
+  bonobo_d_telo_20x_scaf_p:
+    telo_motifs:
+      - 'TTAGGG'
+      - 'CCCTAA'
+    paths:
+      ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/bonobo_d_telo_20x_scaf/bonobo_d_telo_20x_scaf.ec.fa'
+      ul_reads: ~
+      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/bonobo_d_telo_20x_scaf/bonobo_d_telo_20x_scaf.dip.hap1.p_ctg.gfa'
+      baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_d_telo_20x_scaf_p/'
+      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_telo_20x_scaf_p/'
+      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_telo_20x_scaf_p/bonobo_d_telo_20x_scaf_p_n2s.pkl'
+      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/bonobo_d_telo_20x_scaf/bonobo_d_telo_20x_scaf.ovlp.paf'
+      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_telo_20x_scaf_p/bonobo_d_telo_20x_scaf_p_paf_data.pkl'
+      ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/mPanPan1_Pat.fasta'
+      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_telo_20x_scaf_p/bonobo_d_telo_20x_scaf_p_r2n.pkl'
+      save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/bonobo_d_telo_20x_scaf_p/'
+      walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_d_telo_20x_scaf_p/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan2.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan3.yak'
+  bonobo_d_telo_20x_scaf_m:
+    telo_motifs:
+      - 'TTAGGG'
+      - 'CCCTAA'
+    paths:
+      ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/bonobo_d_telo_20x_scaf/bonobo_d_telo_20x_scaf.ec.fa'
+      ul_reads: ~
+      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/bonobo_d_telo_20x_scaf/bonobo_d_telo_20x_scaf.dip.hap2.p_ctg.gfa'
+      baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_d_telo_20x_scaf_m/'
+      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_telo_20x_scaf_m/'
+      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_telo_20x_scaf_m/bonobo_d_telo_20x_scaf_m_n2s.pkl'
+      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/bonobo_d_telo_20x_scaf/bonobo_d_telo_20x_scaf.ovlp.paf'
+      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_telo_20x_scaf_m/bonobo_d_telo_20x_scaf_m_paf_data.pkl'
+      ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/mPanPan1_Mat.fasta'
+      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_telo_20x_scaf_m/bonobo_d_telo_20x_scaf_m_r2n.pkl'
+      save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/bonobo_d_telo_20x_scaf_m/'
+      walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_d_telo_20x_scaf_m/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan2.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan3.yak'
+  bonobo_d_ul_telo_20x_scaf_p:
+    telo_motifs:
+      - 'TTAGGG'
+      - 'CCCTAA'
+    paths:
+      ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/bonobo_d_ul_telo_20x_scaf/bonobo_d_ul_telo_20x_scaf.ec.fa'
+      ul_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/datasets/bonobo_ont/bonobo_ont.fasta'
+      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/bonobo_d_ul_telo_20x_scaf/bonobo_d_ul_telo_20x_scaf.dip.hap1.p_ctg.gfa'
+      baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_d_ul_telo_20x_scaf_p/'
+      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_ul_telo_20x_scaf_p/'
+      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_ul_telo_20x_scaf_p/bonobo_d_ul_telo_20x_scaf_p_n2s.pkl'
+      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/bonobo_d_ul_telo_20x_scaf/bonobo_d_ul_telo_20x_scaf.ovlp.paf'
+      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_ul_telo_20x_scaf_p/bonobo_d_ul_telo_20x_scaf_p_paf_data.pkl'
+      ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/mPanPan1_Pat.fasta'
+      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_ul_telo_20x_scaf_p/bonobo_d_ul_telo_20x_scaf_p_r2n.pkl'
+      save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/bonobo_d_ul_telo_20x_scaf_p/'
+      walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_d_ul_telo_20x_scaf_p/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan2.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan3.yak'
+  bonobo_d_ul_telo_20x_scaf_m:
+    telo_motifs:
+      - 'TTAGGG'
+      - 'CCCTAA'
+    paths:
+      ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/bonobo_d_ul_telo_20x_scaf/bonobo_d_ul_telo_20x_scaf.ec.fa'
+      ul_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/datasets/bonobo_ont/bonobo_ont.fasta'
+      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/bonobo_d_ul_telo_20x_scaf/bonobo_d_ul_telo_20x_scaf.dip.hap2.p_ctg.gfa'
+      baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_d_ul_telo_20x_scaf_m/'
+      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_ul_telo_20x_scaf_m/'
+      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_ul_telo_20x_scaf_m/bonobo_d_ul_telo_20x_scaf_m_n2s.pkl'
+      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/bonobo_d_ul_telo_20x_scaf/bonobo_d_ul_telo_20x_scaf.ovlp.paf'
+      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_ul_telo_20x_scaf_m/bonobo_d_ul_telo_20x_scaf_m_paf_data.pkl'
+      ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/mPanPan1_Mat.fasta'
+      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/bonobo_d_ul_telo_20x_scaf_m/bonobo_d_ul_telo_20x_scaf_m_r2n.pkl'
+      save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/bonobo_d_ul_telo_20x_scaf_m/'
+      walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/bonobo_d_ul_telo_20x_scaf_m/walks.pkl' # Ensure this aligns with baseline
       yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan2.yak'
       yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mPanPan1_v2/panpan3.yak'
 
