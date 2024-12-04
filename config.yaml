@@ -2,17 +2,16 @@ run:
   preprocessing:
     source: 'hifiasm'
     genomes:
-      - 'bonobo_d_ul_telo_20x_scaf_p'
-      - 'bonobo_d_ul_telo_20x_scaf_m'
+      - 'hg002_d_ul_telo_20x_scaf_m'
   generate_baseline:
     source: 'hifiasm'
     genomes:
-      - 'bonobo_d_ul_telo_20x_scaf_p'
-      - 'bonobo_d_ul_telo_20x_scaf_m'
+      - 'hg002_d_ul_telo_20x_scaf_p'
+      - 'hg002_d_ul_telo_20x_scaf_m'
   postprocessing:
     genomes:
-      - 'bonobo_d_ul_telo_20x_scaf_p'
-      - 'bonobo_d_ul_telo_20x_scaf_m'
+      - 'hg002_d_ul_telo_20x_scaf_p'
+      - 'hg002_d_ul_telo_20x_scaf_m'
 
 postprocessing:
   walk_valid_p: 0.0025
@@ -399,6 +398,25 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/arab/arab_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/arab/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/arab/walks.pkl' # Ensure this aligns with baseline
+      yak1: ~
+      yak2: ~
+  arab_ont:
+    telo_motifs:
+      - 'TTTAGGG'
+      - 'CCCTAAA'
+    paths:
+      ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/arab_ont/arab_ont.ec.fa'
+      ul_reads: ~
+      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/arab_ont/arab_ont.bp.p_ctg.gfa'
+      baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/arab_ont/'
+      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/arab_ont/'
+      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/arab_ont/arab_ont_n2s.pkl'
+      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/arab_ont/arab_ont.ovlp.paf'
+      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/arab_ont/arab_ont_paf_data.pkl'
+      ref: '/mnt/sod2-project/csb4/wgs/lovro/gnnome_assembly/references/arabidopsis/latest/GWHBDNP00000000.1.genome.fasta'
+      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/arab_ont/arab_ont_r2n.pkl'
+      save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/arab_ont/'
+      walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/arab_ont/walks.pkl' # Ensure this aligns with baseline
       yak1: ~
       yak2: ~
   chicken:
