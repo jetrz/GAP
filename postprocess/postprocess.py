@@ -766,7 +766,7 @@ def get_contigs(old_walks, new_walks, adj_list, n2s, n2s_ghost, g):
 
     n_old_walks = len(old_walks)
 
-    print("Preprocessing walks...")
+    # print("Preprocessing walks...")
     # Create a list of all edges
     edges_full = {}  ## I dont know why this is necessary. but when cut transitives some edges are wrong otherwise. (This is from Martin's script)
     for idx, (src, dst) in enumerate(zip(g.edges()[0], g.edges()[1])):
@@ -811,7 +811,7 @@ def get_contigs(old_walks, new_walks, adj_list, n2s, n2s_ghost, g):
         walk_seqs.append(c_seqs)
         walk_prefix_lens.append(c_prefix_lens)
 
-    print(f"Generating sequences...")
+    # print(f"Generating sequences...")
     contigs = []
     for i, seqs in enumerate(walk_seqs):
         prefix_lens = walk_prefix_lens[i]

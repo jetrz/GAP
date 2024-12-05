@@ -1,6 +1,6 @@
 from collections import defaultdict
 from copy import deepcopy
-import edlib, gc, mmap, os, pickle, random
+import edlib
 from multiprocessing import Pool
 from tqdm import tqdm
 
@@ -432,13 +432,6 @@ def parse_paf(paths, aux):
     print("Generating r2s...")
     r2s = parse_fasta(paths['ec_reads'])
     if paths['ul_reads']: r2s.update(parse_fasta(paths['ul_reads']))
-    # temp_r2s_file = f'/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/temp_r2s_{random.randint(1,9999999)}.pkl'
-    # with open(temp_r2s_file, "wb") as f:
-    #     pickle.dump(r2s, f)
-    # del r2s; gc.collect()
-    # with open(temp_r2s_file, "rb") as f:
-    #     mmapped = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
-    #     R2S = pickle.loads(mmapped)
     R2S = r2s
 
     for c_n_id in sorted(N2R.keys()):
@@ -508,9 +501,6 @@ def parse_paf(paths, aux):
         },
         'ghost_nodes' : ghosts
     }
-
-    # mmapped.close()
-    # os.remove(temp_r2s_file)
 
     return data
 
