@@ -2,14 +2,17 @@ run:
   preprocessing:
     source: 'hifiasm'
     genomes:
-      - 'tomato_ont'
+      - 'gorilla_d_ont_20x_scaf_p'
+      - 'gorilla_d_ont_20x_scaf_m'
   generate_baseline:
     source: 'hifiasm'
     genomes:
-      - 'tomato_ont'
+      - 'gorilla_d_ont_20x_scaf_p'
+      - 'gorilla_d_ont_20x_scaf_m'
   postprocessing:
     genomes:
-      - 'tomato_ont'
+      - 'gorilla_d_ont_20x_scaf_p'
+      - 'gorilla_d_ont_20x_scaf_m'
 
 postprocessing:
   walk_valid_p: 0.0025
@@ -1240,7 +1243,7 @@ genome_info:
       - 'CCCTAA'
     paths:
       ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/gorilla_d_ul_20x_scaf/gorilla_d_ul_20x_scaf.ec.fa'
-      ul_reads: ~
+      ul_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/datasets/gorilla_ont/gorilla_ont.fa'
       gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/gorilla_d_ul_20x_scaf/gorilla_d_ul_20x_scaf.dip.hap1.p_ctg.gfa'
       baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/gorilla_d_ul_20x_scaf_p/'
       graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/gorilla_d_ul_20x_scaf_p/'
@@ -1259,7 +1262,7 @@ genome_info:
       - 'CCCTAA'
     paths:
       ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/gorilla_d_ul_20x_scaf/gorilla_d_ul_20x_scaf.ec.fa'
-      ul_reads: ~
+      ul_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/datasets/gorilla_ont/gorilla_ont.fa'
       gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/gorilla_d_ul_20x_scaf/gorilla_d_ul_20x_scaf.dip.hap2.p_ctg.gfa'
       baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/gorilla_d_ul_20x_scaf_m/'
       graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/gorilla_d_ul_20x_scaf_m/'
@@ -1270,6 +1273,44 @@ genome_info:
       r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/gorilla_d_ul_20x_scaf_m/gorilla_d_ul_20x_scaf_m_r2n.pkl'
       save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/gorilla_d_ul_20x_scaf_m/'
       walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/gorilla_d_ul_20x_scaf_m/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mGorGor1_v2/pat.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mGorGor1_v2/mat.yak'
+  gorilla_d_ont_20x_scaf_p:
+    telo_motifs:
+      - 'TTAGGG'
+      - 'CCCTAA'
+    paths:
+      ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/gorilla_d_ont_20x_scaf/gorilla_d_ont_20x_scaf.ec.fa'
+      ul_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/datasets/gorilla_ont/gorilla_ont.fa'
+      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/gorilla_d_ont_20x_scaf/gorilla_d_ont_20x_scaf.dip.hap1.p_ctg.gfa'
+      baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/gorilla_d_ont_20x_scaf_p/'
+      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/gorilla_d_ont_20x_scaf_p/'
+      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/gorilla_d_ont_20x_scaf_p/gorilla_d_ont_20x_scaf_p_n2s.pkl'
+      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/gorilla_d_ont_20x_scaf/gorilla_d_ont_20x_scaf.ovlp.paf'
+      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/gorilla_d_ont_20x_scaf_p/gorilla_d_ont_20x_scaf_p_paf_data.pkl'
+      ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mGorGor1_v2/mGorGor1_Pat.fasta'
+      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/gorilla_d_ont_20x_scaf_p/gorilla_d_ont_20x_scaf_p_r2n.pkl'
+      save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/gorilla_d_ont_20x_scaf_p/'
+      walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/gorilla_d_ont_20x_scaf_p/walks.pkl' # Ensure this aligns with baseline
+      yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mGorGor1_v2/pat.yak'
+      yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mGorGor1_v2/mat.yak'
+  gorilla_d_ont_20x_scaf_m:
+    telo_motifs:
+      - 'TTAGGG'
+      - 'CCCTAA'
+    paths:
+      ec_reads: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/gorilla_d_ont_20x_scaf/gorilla_d_ont_20x_scaf.ec.fa'
+      ul_reads: ~
+      gfa: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/gorilla_d_ont_20x_scaf/gorilla_d_ont_20x_scaf.dip.hap2.p_ctg.gfa'
+      baseline: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/gorilla_d_ont_20x_scaf_m/'
+      graph: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/gorilla_d_ont_20x_scaf_m/'
+      n2s: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/gorilla_d_ont_20x_scaf_m/gorilla_d_ont_20x_scaf_m_n2s.pkl'
+      paf: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/hifiasm/gorilla_d_ont_20x_scaf/gorilla_d_ont_20x_scaf.ovlp.paf'
+      paf_processed: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/gorilla_d_ont_20x_scaf_m/gorilla_d_ont_20x_scaf_m_paf_data.pkl'
+      ref: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mGorGor1_v2/mGorGor1_Mat.fasta'
+      r2n: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/supp/hifiasm/gorilla_d_ont_20x_scaf_m/gorilla_d_ont_20x_scaf_m_r2n.pkl'
+      save: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/res/hifiasm/gorilla_d_ont_20x_scaf_m/'
+      walks: '/mnt/sod2-project/csb4/wgs/lovro_interns/joshua/GAP/baseline/hifiasm/gorilla_d_ont_20x_scaf_m/walks.pkl' # Ensure this aligns with baseline
       yak1: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mGorGor1_v2/pat.yak'
       yak2: '/mnt/sod2-project/csb4/wgs/martin/genome_references/mGorGor1_v2/mat.yak'
   hg005_d_ont_scaf_p:
