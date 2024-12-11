@@ -1,11 +1,17 @@
-import dgl, os, pickle, random, subprocess
+import dgl, os, pickle, random, subprocess, torch
+import torch.nn.functional as F
+
 from Bio import Seq, SeqIO
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
 from pyfaidx import Fasta
+from transformers import AutoTokenizer, AutoModel
+from transformers.models.bert.configuration_bert import BertConfig
 
 from misc.utils import asm_metrics, get_seqs, timedelta_to_str, yak_metrics
+
+TOKENISER, MODEL, DEVICE = None, None, torch.device("cuda:1")
 
 class Edge():
     def __init__(self, new_src_nid, new_dst_nid, old_src_nid, old_dst_nid, prefix_len, ol_len, ol_sim):
@@ -458,149 +464,177 @@ def deduplicate(adj_list, old_walks):
     print("Final number of edges:", sum(len(x) for x in adj_list.adj_list.values()))
     return adj_list
 
-def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, memo_chances=50, visited_init=set()):
-    """
-    Given a start node, run the greedy DFS to retrieve the walk with the most key nodes.
-
-    1. When searching, the number of key nodes in the walk, telomere information, and penalty is tracked.
-        a. Number of key nodes are used to compare and select walks.
-        b. Telomere information is used to terminate walks. If a telomere key node is found, it checks the compatability with the telomere in the current walk (if any). For a telomere to be compatible,
-            i. The motif must be opposite.
-            ii. The position of the telomere in the key node's sequence must be opposite. i.e. If the current walk begins with a key node with a telomere at the start of its sequence, then it will only accept key nodes with telomeres at the end of its sequence, and vice versa.
-            iii. The penalty (either overlap similarity or overlap length, configurable) is also tracked to break ties on number of key nodes. However, we found this to not be of much use.
-    2. Optimal walks from each node are memoised after being visited memo_chances number of times. This is because exhaustively searching is computationally infeasible.
-    """
-
-    # Dictionary to memoize the longest walk from each node
-    memo, memo_counts = {}, defaultdict(int)
-
-    def get_telo_info(node):
-        if node >= n_old_walks: return None
-
-        if telo_ref[node]['start']:
-            return ('start', telo_ref[node]['start'])
-        elif telo_ref[node]['end']:
-            return ('end', telo_ref[node]['end'])
-        else:
-            return None
-
-    def check_telo_compatibility(t1, t2):
-        if t1 is None or t2 is None:
-            return True
-        elif t1[0] != t2[0] and t1[1] != t2[1]: # The position must be different, and motif var must be different.
-            return True
-        else:
-            return False
-
-    def dedup(curr_node, curr_walk, curr_key_nodes, curr_penalty):
-        curr_walk_set = set(curr_walk)
-        if curr_node not in curr_walk_set:
-            return curr_walk, curr_key_nodes, curr_penalty
+def get_best_walk(adj_list, start_node, n_old_walks, n2s_ghost, w2s, visited=set()):
+    print(f"\n=== STARTING GET BEST WALK FOR: {start_node} ===")
+    if start_node >= n_old_walks: raise ValueError("Starting decoding at a ghost node!")
+    seq = w2s[start_node]
+    max_walk, max_key_nodes = [start_node], 1
+    while True:
+        c_neighs = adj_list.get_neighbours(max_walk[-1])
+        c_neighs = [n for n in c_neighs if n.new_dst_nid not in visited]
+        if not c_neighs:
+            if max_walk[-1] >= n_old_walks:
+                max_walk.pop()
+                max_key_nodes -= 1
+            break
         
-        c_walk, c_key_nodes, c_penalty = [], 0, 0
-        for i, n in enumerate(curr_walk):
-            if n == curr_node: break
-            c_walk.append(n)
-            if n < n_old_walks: c_key_nodes += 1
-            if i != len(curr_walk)-1:
-                c_edge = adj_list.get_edge(n, curr_walk[i+1])
-                if penalty == "ol_len":
-                    c_penalty -= c_edge.ol_len
-                elif penalty == "ol_sim":
-                    c_penalty += -1*c_edge.ol_sim
+        c_neigh_seqs = [w2s[n.new_dst_nid] if n.new_dst_nid < n_old_walks else n2s_ghost[n.new_dst_nid] for n in c_neighs]
+        scores = predict_next_read(seq, c_neigh_seqs)
+        print("Scores:", scores)
+        max_ind = scores.index(max(scores))
+        next_node = c_neighs[max_ind]
+        max_walk.append(next_node.new_dst_nid)
+        if next_node.new_dst_nid < n_old_walks: 
+            max_key_nodes += 1
+            seq += w2s[next_node.new_dst_nid]
+        else:
+            seq += n2s_ghost[next_node.new_dst_nid]
 
-        return c_walk, c_key_nodes, c_penalty
+    return max_walk, max_key_nodes, 0
 
-    def dfs(node, visited, walk_telo):
-        if node < n_old_walks:
-            telo_info = get_telo_info(node)
-            if telo_info is not None:
-                if walk_telo: print("WARNING: Trying to set walk_telo when it is already set!") 
-                walk_telo = telo_info
+# def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, memo_chances=50, visited_init=set()):
+#     """
+#     Given a start node, run the greedy DFS to retrieve the walk with the most key nodes.
 
-        # If the longest walk starting from this node is already memoised and telomere is compatible, return it
-        if node in memo: 
-            memo_telo = memo[node][3]
-            if check_telo_compatibility(walk_telo, memo_telo):
-                return memo[node][0], memo[node][1], memo[node][2]
+#     1. When searching, the number of key nodes in the walk, telomere information, and penalty is tracked.
+#         a. Number of key nodes are used to compare and select walks.
+#         b. Telomere information is used to terminate walks. If a telomere key node is found, it checks the compatability with the telomere in the current walk (if any). For a telomere to be compatible,
+#             i. The motif must be opposite.
+#             ii. The position of the telomere in the key node's sequence must be opposite. i.e. If the current walk begins with a key node with a telomere at the start of its sequence, then it will only accept key nodes with telomeres at the end of its sequence, and vice versa.
+#             iii. The penalty (either overlap similarity or overlap length, configurable) is also tracked to break ties on number of key nodes. However, we found this to not be of much use.
+#     2. Optimal walks from each node are memoised after being visited memo_chances number of times. This is because exhaustively searching is computationally infeasible.
+#     """
 
-        visited.add(node)
-        max_walk, max_key_nodes, min_penalty = [node], 0, 0
+#     # Dictionary to memoize the longest walk from each node
+#     memo, memo_counts = {}, defaultdict(int)
 
-        # Traverse all the neighbors of the current node
-        for neighbor in adj_list.get_neighbours(node):
-            # Check visited
-            dst = neighbor.new_dst_nid
-            if dst in visited: continue
-            # Check telomere compatibility
-            terminate = False
-            if dst < n_old_walks:
-                curr_telo = get_telo_info(dst)
-                if curr_telo is not None:
-                    if check_telo_compatibility(walk_telo, curr_telo):
-                        terminate = True
-                    else:
-                        continue 
+#     def get_telo_info(node):
+#         if node >= n_old_walks: return None
 
-            if terminate:
-                # Terminate search at the next node due to telomere compatibility
-                current_walk, current_key_nodes, current_penalty = [dst], 1, 0
-            else:
-                # Perform DFS on the neighbor and check the longest walk from that neighbor
-                current_walk, current_key_nodes, current_penalty = dfs(dst, visited, walk_telo)
-                # We have to check if there are duplicates in the returned walk. This is because of memoisation, where a returned memoised result can bypass visited set check.
-                current_walk, current_key_nodes, current_penalty = dedup(node, current_walk, current_key_nodes, current_penalty)
+#         if telo_ref[node]['start']:
+#             return ('start', telo_ref[node]['start'])
+#         elif telo_ref[node]['end']:
+#             return ('end', telo_ref[node]['end'])
+#         else:
+#             return None
 
-            # Add the penalty for selecting that neighbour, either based on OL Len or OL Sim
-            if penalty == "ol_len":
-                current_penalty -= neighbor.ol_len
-            elif penalty == "ol_sim":
-                current_penalty += -1*neighbor.ol_sim
+#     def check_telo_compatibility(t1, t2):
+#         if t1 is None or t2 is None:
+#             return True
+#         elif t1[0] != t2[0] and t1[1] != t2[1]: # The position must be different, and motif var must be different.
+#             return True
+#         else:
+#             return False
 
-            if current_walk[-1] >= n_old_walks: # last node is a ghost node, should not count their penalty
-                prev_node = node if len(current_walk) == 1 else current_walk[-2]
-                curr_edge = adj_list.get_edge(prev_node, current_walk[-1])
-                if penalty == "ol_len":
-                    current_penalty -= curr_edge.ol_len
-                elif penalty == "ol_sim":
-                    current_penalty -= curr_edge.ol_sim
+#     def dedup(curr_node, curr_walk, curr_key_nodes, curr_penalty):
+#         curr_walk_set = set(curr_walk)
+#         if curr_node not in curr_walk_set:
+#             return curr_walk, curr_key_nodes, curr_penalty
+        
+#         c_walk, c_key_nodes, c_penalty = [], 0, 0
+#         for i, n in enumerate(curr_walk):
+#             if n == curr_node: break
+#             c_walk.append(n)
+#             if n < n_old_walks: c_key_nodes += 1
+#             if i != len(curr_walk)-1:
+#                 c_edge = adj_list.get_edge(n, curr_walk[i+1])
+#                 if penalty == "ol_len":
+#                     c_penalty -= c_edge.ol_len
+#                 elif penalty == "ol_sim":
+#                     c_penalty += -1*c_edge.ol_sim
 
-            # If adding this walk leads to a longer path, or same one with same length but lower penalty, update the max_walk and min_penalty
-            if (current_key_nodes > max_key_nodes) or (current_key_nodes == max_key_nodes and current_penalty < min_penalty):
-                max_walk = [node] + current_walk
-                max_key_nodes = current_key_nodes
-                min_penalty = current_penalty
+#         return c_walk, c_key_nodes, c_penalty
 
-        visited.remove(node)
-        if node < n_old_walks: max_key_nodes += 1
+#     def dfs(node, visited, walk_telo):
+#         if node < n_old_walks:
+#             telo_info = get_telo_info(node)
+#             if telo_info is not None:
+#                 if walk_telo: print("WARNING: Trying to set walk_telo when it is already set!") 
+#                 walk_telo = telo_info
 
-        # Memoize the result for this node if chances are used up
-        memo_counts[node] += 1
-        if memo_counts[node] >= memo_chances:
-            if len(max_walk) == 1 and max_walk[-1] >= n_old_walks:
-                curr_telo = None
-            elif max_walk[-1] < n_old_walks:
-                curr_telo = get_telo_info(max_walk[-1])
-            else:
-                curr_telo = get_telo_info(max_walk[-2])
-            memo[node] = (max_walk, max_key_nodes, min_penalty, curr_telo)
+#         # If the longest walk starting from this node is already memoised and telomere is compatible, return it
+#         if node in memo: 
+#             memo_telo = memo[node][3]
+#             if check_telo_compatibility(walk_telo, memo_telo):
+#                 return memo[node][0], memo[node][1], memo[node][2]
 
-        return max_walk, max_key_nodes, min_penalty    
+#         visited.add(node)
+#         max_walk, max_key_nodes, min_penalty = [node], 0, 0
 
-    # Start DFS from the given start node
-    res_walk, res_key_nodes, res_penalty = dfs(start_node, visited_init, None)
+#         # Traverse all the neighbors of the current node
+#         for neighbor in adj_list.get_neighbours(node):
+#             # Check visited
+#             dst = neighbor.new_dst_nid
+#             if dst in visited: continue
+#             # Check telomere compatibility
+#             terminate = False
+#             if dst < n_old_walks:
+#                 curr_telo = get_telo_info(dst)
+#                 if curr_telo is not None:
+#                     if check_telo_compatibility(walk_telo, curr_telo):
+#                         terminate = True
+#                     else:
+#                         continue 
 
-    # If the last node in a walk is a ghost node, remove it from the walk and negate its penalty.
-    # This case should not occur, but I am just double checking
-    if res_walk[-1] >= n_old_walks:
-        curr_edge = adj_list.get_edge(res_walk[-2], res_walk[-1])
-        if penalty == "ol_len":
-            res_penalty -= curr_edge.ol_len
-        elif penalty == "ol_sim":
-            res_penalty -= curr_edge.ol_sim
-        res_walk.pop()
+#             if terminate:
+#                 # Terminate search at the next node due to telomere compatibility
+#                 current_walk, current_key_nodes, current_penalty = [dst], 1, 0
+#             else:
+#                 # Perform DFS on the neighbor and check the longest walk from that neighbor
+#                 current_walk, current_key_nodes, current_penalty = dfs(dst, visited, walk_telo)
+#                 # We have to check if there are duplicates in the returned walk. This is because of memoisation, where a returned memoised result can bypass visited set check.
+#                 current_walk, current_key_nodes, current_penalty = dedup(node, current_walk, current_key_nodes, current_penalty)
 
-    return res_walk, res_key_nodes, res_penalty
+#             # Add the penalty for selecting that neighbour, either based on OL Len or OL Sim
+#             if penalty == "ol_len":
+#                 current_penalty -= neighbor.ol_len
+#             elif penalty == "ol_sim":
+#                 current_penalty += -1*neighbor.ol_sim
+
+#             if current_walk[-1] >= n_old_walks: # last node is a ghost node, should not count their penalty
+#                 prev_node = node if len(current_walk) == 1 else current_walk[-2]
+#                 curr_edge = adj_list.get_edge(prev_node, current_walk[-1])
+#                 if penalty == "ol_len":
+#                     current_penalty -= curr_edge.ol_len
+#                 elif penalty == "ol_sim":
+#                     current_penalty -= curr_edge.ol_sim
+
+#             # If adding this walk leads to a longer path, or same one with same length but lower penalty, update the max_walk and min_penalty
+#             if (current_key_nodes > max_key_nodes) or (current_key_nodes == max_key_nodes and current_penalty < min_penalty):
+#                 max_walk = [node] + current_walk
+#                 max_key_nodes = current_key_nodes
+#                 min_penalty = current_penalty
+
+#         visited.remove(node)
+#         if node < n_old_walks: max_key_nodes += 1
+
+#         # Memoize the result for this node if chances are used up
+#         memo_counts[node] += 1
+#         if memo_counts[node] >= memo_chances:
+#             if len(max_walk) == 1 and max_walk[-1] >= n_old_walks:
+#                 curr_telo = None
+#             elif max_walk[-1] < n_old_walks:
+#                 curr_telo = get_telo_info(max_walk[-1])
+#             else:
+#                 curr_telo = get_telo_info(max_walk[-2])
+#             memo[node] = (max_walk, max_key_nodes, min_penalty, curr_telo)
+
+#         return max_walk, max_key_nodes, min_penalty    
+
+#     # Start DFS from the given start node
+#     res_walk, res_key_nodes, res_penalty = dfs(start_node, visited_init, None)
+
+#     # If the last node in a walk is a ghost node, remove it from the walk and negate its penalty.
+#     # This case should not occur, but I am just double checking
+#     if res_walk[-1] >= n_old_walks:
+#         curr_edge = adj_list.get_edge(res_walk[-2], res_walk[-1])
+#         if penalty == "ol_len":
+#             res_penalty -= curr_edge.ol_len
+#         elif penalty == "ol_sim":
+#             res_penalty -= curr_edge.ol_sim
+#         res_walk.pop()
+
+#     return res_walk, res_key_nodes, res_penalty
 
 def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty):
     """
@@ -661,7 +695,7 @@ def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty):
     print(f"New walks generated! n new walks: {len(new_walks)}")
     return new_walks
 
-def get_walks_telomere(walk_ids, adj_list, telo_ref, dfs_penalty):
+def get_walks_telomere(walk_ids, adj_list, telo_ref, dfs_penalty, n2s_ghost, w2s):
     """
     Creates the new walks, priotising key nodes with telomeres.
 
@@ -709,9 +743,9 @@ def get_walks_telomere(walk_ids, adj_list, telo_ref, dfs_penalty):
         best_walk, best_key_nodes, best_penalty = [], 0, 0
         for walk_id in telo_walk_ids: # the node_id is also the index
             if telo_ref[walk_id]['start']:
-                curr_walk, curr_key_nodes, curr_penalty = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
+                curr_walk, curr_key_nodes, curr_penalty = get_best_walk(temp_adj_list, walk_id, n_old_walks, n2s_ghost, w2s)
             else:
-                curr_walk, curr_key_nodes, curr_penalty = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
+                curr_walk, curr_key_nodes, curr_penalty = get_best_walk(rev_adj_list, walk_id, n_old_walks, n2s_ghost, w2s)
                 curr_walk.reverse()
             if curr_key_nodes > best_key_nodes or (curr_key_nodes == best_key_nodes and curr_penalty < best_penalty):
                 best_key_nodes = curr_key_nodes
@@ -735,9 +769,9 @@ def get_walks_telomere(walk_ids, adj_list, telo_ref, dfs_penalty):
     while non_telo_walk_ids:
         best_walk, best_key_nodes, best_penalty = [], 0, 0
         for walk_id in non_telo_walk_ids: # the node_id is also the index
-            curr_walk, curr_key_nodes, curr_penalty = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
+            curr_walk, curr_key_nodes, curr_penalty = get_best_walk(temp_adj_list, walk_id, n_old_walks, n2s_ghost, w2s)
             visited_init = set(curr_walk[1:]) if len(curr_walk) > 1 else set()
-            curr_walk_rev, curr_key_nodes_rev, curr_penalty_rev = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty, visited_init=visited_init)
+            curr_walk_rev, curr_key_nodes_rev, curr_penalty_rev = get_best_walk(rev_adj_list, walk_id, n_old_walks, n2s_ghost, w2s, visited=visited_init)
             curr_walk_rev.reverse(); curr_walk_rev = curr_walk_rev[:-1]; curr_walk_rev.extend(curr_walk); curr_walk = curr_walk_rev
             curr_key_nodes += (curr_key_nodes_rev-1)
             curr_penalty += curr_penalty_rev
@@ -755,6 +789,59 @@ def get_walks_telomere(walk_ids, adj_list, telo_ref, dfs_penalty):
 
     print(f"New walks generated! n new walks: {len(new_walks)}")
     return new_walks
+
+def predict_next_read(seq, reads):
+    """
+    Given a sequence and several potential next reads, returns the probability scores for each of these next reads.
+    """
+    scores = []
+    for read in reads:
+        input_seq = seq + read  # Concatenate sequence with the read
+        encoded_input = TOKENISER(input_seq, return_tensors="pt", padding=True, truncation=True, max_length=512)
+        encoded_input = encoded_input.to(DEVICE)
+
+        # Forward pass through the model
+        with torch.no_grad():
+            output = MODEL(**encoded_input)
+        
+        # Extract logits and calculate probabilities
+        logits = output[0]
+        probabilities = F.softmax(logits, dim=-1) # Apply softmax to the logits
+        
+        # Focus on the last token probabilities (assuming interest in the appended read's contribution)
+        if len(read) > 512: read = read[:512]
+        read_token_ids = torch.tensor(TOKENISER(read, add_special_tokens=False)['input_ids']).unsqueeze(1).to(DEVICE)
+        last_probs = probabilities[0, -len(read_token_ids):, :]  # Slice for the read
+        print(read_token_ids.shape, last_probs.shape)
+        print(read_token_ids); print(last_probs)
+        raise ValueError("fuck off")
+        read_prob = last_probs[torch.arange(len(read_token_ids)), read_token_ids].mean()
+        
+        scores.append(read_prob.item())
+
+    return scores
+
+def get_w2s(walks, n2s, graph):
+    # Create a list of all edges
+    edges_full = {}  ## I dont know why this is necessary. but when cut transitives some edges are wrong otherwise. (This comment is from Martin's script)
+    for idx, (src, dst) in enumerate(zip(graph.edges()[0], graph.edges()[1])):
+        src, dst = src.item(), dst.item()
+        edges_full[(src, dst)] = idx
+
+    # Regenerate old contigs
+    w2s = {}
+    for walk_id, walk in enumerate(walks):
+        seq = ""
+        for idx, node in enumerate(walk):
+            c_seq = str(n2s[node])
+            if idx != len(walk)-1:
+                c_prefix = graph.edata['prefix_length'][edges_full[node,walk[idx+1]]]
+                c_seq = c_seq[:c_prefix]
+            seq += c_seq
+
+        w2s[walk_id] = seq
+
+    return w2s
 
 def get_contigs(old_walks, new_walks, adj_list, n2s, n2s_ghost, g):
     """
@@ -880,11 +967,19 @@ def postprocess(name, hyperparams, paths, aux):
     print(f"De-duplicating edges... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     adj_list = deduplicate(adj_list, walks)
 
+    print(f"Preparing Model... (Time: {timedelta_to_str(datetime.now() - time_start)})")
+    global TOKENISER, MODEL
+    TOKENISER = AutoTokenizer.from_pretrained("zhihan1996/DNABERT-2-117M", trust_remote_code=True)
+    config = BertConfig.from_pretrained("zhihan1996/DNABERT-2-117M")
+    MODEL = AutoModel.from_pretrained("zhihan1996/DNABERT-2-117M", trust_remote_code=True, config=config)
+    MODEL = MODEL.to(DEVICE)
+
     print(f"Generating new walks... (Time: {timedelta_to_str(datetime.now() - time_start)})")
+    w2s = get_w2s(walks, n2s, old_graph)
     if hyperparams['walk_var'] == 'default':
         new_walks = get_walks(walk_ids, adj_list, telo_ref, hyperparams['dfs_penalty'])
     elif hyperparams['walk_var'] == 'telomere':
-        new_walks = get_walks_telomere(walk_ids, adj_list, telo_ref, hyperparams['dfs_penalty'])
+        new_walks = get_walks_telomere(walk_ids, adj_list, telo_ref, hyperparams['dfs_penalty'], n2s_ghost, w2s)
     else:
         raise ValueError("Invalid walk_var!")
 
