@@ -921,6 +921,6 @@ def run_postprocessing(config):
         aux['ul_r2s'] = Fasta(paths['ul_reads']) if paths['ul_reads'] else None
 
         # postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux)
-        for w in [0.05, 0.025, 0.01]:
+        for w in [0.005, 0.0025, 0.001]:
             postprocessing_config['walk_valid_p'] = w
             postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux)

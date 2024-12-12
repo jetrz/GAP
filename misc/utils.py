@@ -82,7 +82,10 @@ def yak_metrics(save_path, yak1, yak2, yak_path):
             if switch_err is not None and hamming_err is not None:
                 break
 
-    print(f"YAK Switch Err: {switch_err*100:.4f}%, YAK Hamming Err: {hamming_err*100:.4f}%")
+    if switch_err is None or hamming_err is None:
+        print("YAK Switch/Hamming error not found!")
+    else:
+        print(f"YAK Switch Err: {switch_err*100:.4f}%, YAK Hamming Err: {hamming_err*100:.4f}%")
 
 def get_seqs(id, hifi_r2s, ul_r2s):
     if id in hifi_r2s:
