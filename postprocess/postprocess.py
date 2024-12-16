@@ -220,7 +220,7 @@ def chop_walks_seqtk(old_walks, n2s, graph, rep1, rep2, seqtk_path):
     print(f"Chopping complete! n Old Walks: {len(old_walks)}, n New Walks: {len(new_walks)}, n +ve telomeric regions: {rep1_count}, n -ve telomeric regions: {rep2_count}")
     return new_walks, telo_ref
 
-def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, walk_valid_p, gnnome_config, model_path):
+def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, walk_valid_p, score_cutoff_p, gnnome_config, model_path):
     """
     Adds nodes and edges from the PAF and graph.
 
@@ -487,7 +487,7 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, walk_
         e2s[(new_dst_id.item(), new_src_id.item())] = new_graph.edata['score'][eid].item() # add the reverse as well cuz get_best_walk also searches in reverse
 
     global SCORE_CUTOFF
-    SCORE_CUTOFF = np.percentile(list(e2s.values()), 5)
+    SCORE_CUTOFF = np.percentile(list(e2s.values()), score_cutoff_p)
     print("score cutoff: ", SCORE_CUTOFF)
 
     print("Final number of nodes:", n_id)
@@ -991,6 +991,7 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
         n2s=n2s,
         old_graph=old_graph,
         walk_valid_p=hyperparams['walk_valid_p'],
+        score_cutoff_p=hyperparams['score_cutoff_p'],
         gnnome_config=gnnome_config,
         model_path=paths['model']
     )
