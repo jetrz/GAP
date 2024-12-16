@@ -578,7 +578,7 @@ def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, e2s, penalty=None
     c_node = start_node
     while True:
         c_neighs = adj_list.get_neighbours(c_node)
-        c_neighs = [n for n in c_neighs if (n.new_dst_nid not in visited and e2s[c_node, n.new_dst_nid]>SCORE_CUTOFF)]
+        c_neighs = [n for n in c_neighs if (n.new_dst_nid not in visited and e2s[c_node, n.new_dst_nid]>=SCORE_CUTOFF)]
         if not c_neighs: break
 
         highest_score = max(c_neighs, key=lambda n: e2s[c_node, n.new_dst_nid])
@@ -1044,7 +1044,10 @@ def run_postprocessing(config):
         aux['hifi_r2s'] = Fasta(paths['ec_reads'])
         aux['ul_r2s'] = Fasta(paths['ul_reads']) if paths['ul_reads'] else None
 
-        postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
+        # postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
         # for w in [0.005, 0.0025, 0.001]:
         #     postprocessing_config['walk_valid_p'] = w
         #     postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
+        for p in [5, 2.5, 0]:
+            postprocessing_config['score_cutoff_p'] = p
+            postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
