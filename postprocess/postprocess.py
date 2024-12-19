@@ -838,11 +838,10 @@ def postprocess(name, hyperparams, paths, aux):
     Currently, only uses info from 1-hop neighbourhood of original graph. Any two walks are at most connected by a single ghost node. Also, all added ghost nodes must have at least one incoming and one outgoing edge to a walk.
     
     Summary of the pipeline (details can be found in the respective functions):
-    1. Loads the relevant files.
-    2. Generates telomere information, then chops walks accordingly.
-    3. Compresses each GNNome walk into a single node, then adds 'ghost' nodes and edges using information from PAF and GFA.
-    4. Decodes the new sequences using DFS and telomere information.
-    5. Regenerates contigs and calculates metrics.
+    1. Generates telomere information, then chops walks accordingly.
+    2. Compresses each GNNome walk into a single node, then adds 'ghost' nodes and edges using information from PAF and GFA.
+    3. Decodes the new sequences using DFS and telomere information.
+    4. Regenerates contigs and calculates metrics.
     """
     time_start = datetime.now()
 

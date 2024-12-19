@@ -1,5 +1,5 @@
 from datetime import datetime
-import dgl, pickle, torch
+import dgl, gc, pickle, torch
 from pyfaidx import Fasta
 
 from misc.utils import pyg_to_dgl, timedelta_to_str
@@ -32,12 +32,16 @@ def run_preprocessing(config):
         torch.save(g, genome_info['paths']['graph']+f'{genome}.pt')
         dgl_g = pyg_to_dgl(g, aux['node_attrs'], aux['edge_attrs'])
         dgl.save_graphs(genome_info['paths']['graph']+f'{genome}.dgl', [dgl_g])
+        del aux['n2s']
+        gc.collect()
 
         print(f"Processing PAF... (Time: {timedelta_to_str(datetime.now() - time_start)})")
         paf_data = parse_paf(genome_info['paths'], aux)
         with open(genome_info['paths']['paf_processed'], "wb") as p:
             pickle.dump(paf_data, p)
 
+        del aux, paf_data, g, dgl_g
+        gc.collect()
         print(f"Run finished! (Time: {timedelta_to_str(datetime.now() - time_start)})")
 
 

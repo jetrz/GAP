@@ -2,20 +2,23 @@ run:
   preprocessing:
     source: 'hifiasm'
     genomes:
-      - 'bonobo_d_ont_20x_scaf_p'
-      - 'bonobo_d_ont_20x_scaf_m'
+      - 'tomato_ont'
+      - 'arab_ont'
+      - 'chicken'
   generate_baseline:
     source: 'hifiasm'
     genomes:
-      - 'bonobo_d_ont_20x_scaf_p'
-      - 'bonobo_d_ont_20x_scaf_m'
+      - 'tomato_ont'
+      - 'arab_ont'
+      - 'chicken'
   postprocessing:
     genomes:
-      - 'bonobo_d_ont_20x_scaf_p'
-      - 'bonobo_d_ont_20x_scaf_m'
-
+      - 'tomato_ont'
+      - 'arab_ont'
+      - 'chicken'
+      
 postprocessing:
-  walk_valid_p: 0.001
+  walk_valid_p: 0.0025
   use_telomere_info : false
   dfs_penalty: null # None, ol_len or ol_sim
   walk_var: 'telomere' # default or telomere
