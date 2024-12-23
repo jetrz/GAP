@@ -8,12 +8,8 @@ run:
   postprocessing:
     genomes:
       - 'chm13'
-      - 'hg002_20x_p'
-      - 'hg002_20x_m'
       - 'hg002_d_20x_scaf_p'
       - 'hg002_d_20x_scaf_m'
-      - 'hg002_d_ul_20x_scaf_p'
-      - 'hg002_d_ul_20x_scaf_m'
       - 'hg005_d_ont_scaf_p'
       - 'hg005_d_ont_scaf_m'
       - 'hg002_d_ont_scaf_p'
@@ -21,10 +17,9 @@ run:
 
 postprocessing:
   walk_valid_p: 0.001
-  use_telomere_info: false
+  use_telomere_info: true
   dfs_penalty: null # None, ol_len or ol_sim
   walk_var: 'telomere' # default or telomere
-  score_cutoff_p: 5
 
 misc:
   paths:

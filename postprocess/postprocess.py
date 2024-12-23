@@ -10,8 +10,6 @@ from generate_baseline.gnnome_decoding import preprocess_graph
 from generate_baseline.SymGatedGCN import SymGatedGCNModel
 from misc.utils import asm_metrics, get_seqs, timedelta_to_str, yak_metrics
 
-SCORE_CUTOFF = float('-inf')
-
 class Edge():
     def __init__(self, new_src_nid, new_dst_nid, old_src_nid, old_dst_nid, prefix_len, ol_len, ol_sim):
         self.new_src_nid = new_src_nid
@@ -220,7 +218,7 @@ def chop_walks_seqtk(old_walks, n2s, graph, rep1, rep2, seqtk_path):
     print(f"Chopping complete! n Old Walks: {len(old_walks)}, n New Walks: {len(new_walks)}, n +ve telomeric regions: {rep1_count}, n -ve telomeric regions: {rep2_count}")
     return new_walks, telo_ref
 
-def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, walk_valid_p, score_cutoff_p, gnnome_config, model_path):
+def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, walk_valid_p, gnnome_config, model_path):
     """
     Adds nodes and edges from the PAF and graph.
 
@@ -228,7 +226,8 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, walk_
     This is split into nodes at the start and end of walks bc incoming edges can only connect to nodes at the start of walks, and outgoing edges can only come from nodes at the end of walks.
     2. I add edges between existing walk nodes using information from PAF (although in all experiments no such edges have been found).
     3. I add nodes using information from PAF.
-    4. I add nodes using information from the graph (and by proxy the GFA). 
+    4. I add nodes using information from the graph (and by proxy the GFA).
+    5. I calculate the probability scores for all these new edges using GNNome's model and save them in e2s.
     """
     n_id = 0
     adj_list = AdjList()
@@ -486,10 +485,6 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, walk_
         e2s[(new_src_id.item(), new_dst_id.item())] = new_graph.edata['score'][eid].item()
         e2s[(new_dst_id.item(), new_src_id.item())] = new_graph.edata['score'][eid].item() # add the reverse as well cuz get_best_walk also searches in reverse
 
-    global SCORE_CUTOFF
-    SCORE_CUTOFF = np.percentile(list(e2s.values()), score_cutoff_p)
-    print("score cutoff: ", SCORE_CUTOFF)
-
     print("Final number of nodes:", n_id)
     if added_edges_count or added_nodes_count:
         return adj_list, walk_ids, n2s_ghost, e2s
@@ -567,18 +562,41 @@ def deduplicate(adj_list, old_walks):
     print("Final number of edges:", sum(len(x) for x in adj_list.adj_list.values()))
     return adj_list
 
+def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, e2s, visited=set(), dfs_penalty=None):
+    """
+    Given a start node, greedily performs DFS by recursively choosing the edge with the highest probabilty score while also checking telomere compatibility.
+    Note: dfs penalty is currently not being used, but leaving it here for possible future extension. the last value returned (0) by this function represents the penalty of the best walk.
+    """
+    def get_telo_info(node):
+        if node >= n_old_walks: return None
 
+        if telo_ref[node]['start']:
+            return ('start', telo_ref[node]['start'])
+        elif telo_ref[node]['end']:
+            return ('end', telo_ref[node]['end'])
+        else:
+            return None
 
-
-def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, e2s, penalty=None, memo_chances=50, visited_init=set()):
-    visited = visited_init
-
+    def check_telo_compatibility(t1, t2):
+        if t1 is None or t2 is None:
+            return True
+        elif t1[0] != t2[0] and t1[1] != t2[1]: # The position must be different, and motif var must be different.
+            return True
+        else:
+            return False
+        
     walk, n_key_nodes = [start_node], 1
     visited.add(start_node)
     c_node = start_node
+    walk_telo = get_telo_info(start_node)
     while True:
-        c_neighs = adj_list.get_neighbours(c_node)
-        c_neighs = [n for n in c_neighs if (n.new_dst_nid not in visited and e2s[c_node, n.new_dst_nid]>=SCORE_CUTOFF)]
+        neighs = adj_list.get_neighbours(c_node)
+        c_neighs = []
+        for n in neighs:
+            if n.new_dst_nid in visited: continue
+            curr_telo = get_telo_info(n.new_dst_nid)
+            if not check_telo_compatibility(walk_telo, curr_telo): continue
+            c_neighs.append(n)
         if not c_neighs: break
 
         highest_score = max(c_neighs, key=lambda n: e2s[c_node, n.new_dst_nid])
@@ -587,141 +605,11 @@ def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, e2s, penalty=None
         c_node = highest_score.new_dst_nid
         visited.add(c_node)
 
+        if telo_ref[highest_score.new_dst_nid]['start'] or telo_ref[highest_score.new_dst_nid]['end']: break # if current node has a telomere, it should stop searching
+
     if walk[-1] >= n_old_walks: walk.pop()
 
     return walk, n_key_nodes, 0
-
-
-
-
-# def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, e2s, penalty=None, memo_chances=50, visited_init=set()):
-#     """
-#     Given a start node, run the greedy DFS to retrieve the walk with the most key nodes.
-
-#     1. When searching, the number of key nodes in the walk, telomere information, and penalty is tracked.
-#         a. Number of key nodes are used to compare and select walks.
-#         b. Telomere information is used to terminate walks. If a telomere key node is found, it checks the compatability with the telomere in the current walk (if any). For a telomere to be compatible,
-#             i. The motif must be opposite.
-#             ii. The position of the telomere in the key node's sequence must be opposite. i.e. If the current walk begins with a key node with a telomere at the start of its sequence, then it will only accept key nodes with telomeres at the end of its sequence, and vice versa.
-#             iii. The penalty (either overlap similarity or overlap length, configurable) is also tracked to break ties on number of key nodes. However, we found this to not be of much use.
-#     2. Optimal walks from each node are memoised after being visited memo_chances number of times. This is because exhaustively searching is computationally infeasible.
-#     """
-
-#     # Dictionary to memoize the longest walk from each node
-#     memo, memo_counts = {}, defaultdict(int)
-
-#     def get_telo_info(node):
-#         if node >= n_old_walks: return None
-
-#         if telo_ref[node]['start']:
-#             return ('start', telo_ref[node]['start'])
-#         elif telo_ref[node]['end']:
-#             return ('end', telo_ref[node]['end'])
-#         else:
-#             return None
-
-#     def check_telo_compatibility(t1, t2):
-#         if t1 is None or t2 is None:
-#             return True
-#         elif t1[0] != t2[0] and t1[1] != t2[1]: # The position must be different, and motif var must be different.
-#             return True
-#         else:
-#             return False
-
-#     def dedup(curr_node, curr_walk, curr_key_nodes, curr_penalty):
-#         curr_walk_set = set(curr_walk)
-#         if curr_node not in curr_walk_set:
-#             return curr_walk, curr_key_nodes, curr_penalty
-        
-#         c_walk, c_key_nodes, c_penalty = [], 0, 0
-#         for i, n in enumerate(curr_walk):
-#             if n == curr_node: break
-#             c_walk.append(n)
-#             if n < n_old_walks: c_key_nodes += 1
-#             if i != len(curr_walk)-1:
-#                 c_penalty -= e2s[(n, curr_walk[i+1])]
-
-#         return c_walk, c_key_nodes, c_penalty
-
-#     def dfs(node, visited, walk_telo):
-#         if node < n_old_walks:
-#             telo_info = get_telo_info(node)
-#             if telo_info is not None:
-#                 if walk_telo: print("WARNING: Trying to set walk_telo when it is already set!") 
-#                 walk_telo = telo_info
-
-#         # If the longest walk starting from this node is already memoised and telomere is compatible, return it
-#         if node in memo: 
-#             memo_telo = memo[node][3]
-#             if check_telo_compatibility(walk_telo, memo_telo):
-#                 return memo[node][0], memo[node][1], memo[node][2]
-
-#         visited.add(node)
-#         max_walk, max_key_nodes, min_penalty = [node], 0, 0
-
-#         # Traverse all the neighbors of the current node
-#         for neighbor in adj_list.get_neighbours(node):
-#             # Check visited
-#             dst = neighbor.new_dst_nid
-#             if dst in visited: continue
-#             # Check telomere compatibility
-#             terminate = False
-#             if dst < n_old_walks:
-#                 curr_telo = get_telo_info(dst)
-#                 if curr_telo is not None:
-#                     if check_telo_compatibility(walk_telo, curr_telo):
-#                         terminate = True
-#                     else:
-#                         continue 
-
-#             if terminate:
-#                 # Terminate search at the next node due to telomere compatibility
-#                 current_walk, current_key_nodes, current_penalty = [dst], 1, 0
-#             else:
-#                 # Perform DFS on the neighbor and check the longest walk from that neighbor
-#                 current_walk, current_key_nodes, current_penalty = dfs(dst, visited, walk_telo)
-#                 # We have to check if there are duplicates in the returned walk. This is because of memoisation, where a returned memoised result can bypass visited set check.
-#                 current_walk, current_key_nodes, current_penalty = dedup(node, current_walk, current_key_nodes, current_penalty)
-
-#             # Add the penalty for selecting that neighbour based on model scores
-#             current_penalty -= e2s[(node, dst)]
-
-#             if current_walk[-1] >= n_old_walks: # last node is a ghost node, should not count their penalty
-#                 if len(current_walk) > 1:
-#                     current_penalty += e2s[(current_walk[-2], current_walk[-1])]
-
-#             # If adding this walk leads to a longer path, or same one with same length but lower penalty, update the max_walk and min_penalty
-#             if (current_key_nodes > max_key_nodes) or (current_key_nodes == max_key_nodes and current_penalty < min_penalty):
-#                 max_walk = [node] + current_walk
-#                 max_key_nodes = current_key_nodes
-#                 min_penalty = current_penalty
-
-#         visited.remove(node)
-#         if node < n_old_walks: max_key_nodes += 1
-
-#         # Memoize the result for this node if chances are used up
-#         memo_counts[node] += 1
-#         if memo_counts[node] >= memo_chances:
-#             if len(max_walk) == 1 and max_walk[-1] >= n_old_walks:
-#                 curr_telo = None
-#             elif max_walk[-1] < n_old_walks:
-#                 curr_telo = get_telo_info(max_walk[-1])
-#             else:
-#                 curr_telo = get_telo_info(max_walk[-2])
-#             memo[node] = (max_walk, max_key_nodes, min_penalty, curr_telo)
-
-#         return max_walk, max_key_nodes, min_penalty    
-
-#     # Start DFS from the given start node
-#     res_walk, res_key_nodes, res_penalty = dfs(start_node, visited_init, None)
-
-#     # If the last node in a walk is a ghost node, remove it from the walk and negate its penalty.
-#     # This case should not occur, but I am just double checking
-#     if res_walk[-1] >= n_old_walks:
-#         res_penalty += e2s[(res_walk[-2], res_walk[-1])]
-#         res_walk.pop()
-
-#     return res_walk, res_key_nodes, res_penalty
 
 def get_walks(walk_ids, adj_list, telo_ref, e2s, dfs_penalty):
     """
@@ -731,7 +619,6 @@ def get_walks(walk_ids, adj_list, telo_ref, e2s, dfs_penalty):
     2. For all key nodes, we find the best walk starting from that node. The best walk out of all is then saved, and the process is repeated until all key nodes are used.
         i. We each node we search forwards and backwards, then append the results together.
     """
-
     # Generating new walks using greedy DFS
     new_walks = []
     temp_walk_ids, temp_adj_list = deepcopy(walk_ids), deepcopy(adj_list)
@@ -761,9 +648,9 @@ def get_walks(walk_ids, adj_list, telo_ref, e2s, dfs_penalty):
     while temp_walk_ids:
         best_walk, best_key_nodes, best_penalty = [], 0, 0
         for walk_id in temp_walk_ids: # the node_id is also the index
-            curr_walk, curr_key_nodes, curr_penalty = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, e2s, dfs_penalty)
+            curr_walk, curr_key_nodes, curr_penalty = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, e2s, dfs_penalty=dfs_penalty)
             visited_init = set(curr_walk[1:]) if len(curr_walk) > 1 else set()
-            curr_walk_rev, curr_key_nodes_rev, curr_penalty_rev = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, e2s, dfs_penalty, visited_init=visited_init)
+            curr_walk_rev, curr_key_nodes_rev, curr_penalty_rev = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, e2s, visited=visited_init, dfs_penalty=dfs_penalty)
             curr_walk_rev.reverse(); curr_walk_rev = curr_walk_rev[:-1]; curr_walk_rev.extend(curr_walk); curr_walk = curr_walk_rev
             curr_key_nodes += (curr_key_nodes_rev-1)
             curr_penalty += curr_penalty_rev
@@ -830,9 +717,9 @@ def get_walks_telomere(walk_ids, adj_list, telo_ref, e2s, dfs_penalty):
         best_walk, best_key_nodes, best_penalty = [], 0, 0
         for walk_id in telo_walk_ids: # the node_id is also the index
             if telo_ref[walk_id]['start']:
-                curr_walk, curr_key_nodes, curr_penalty = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, e2s, dfs_penalty)
+                curr_walk, curr_key_nodes, curr_penalty = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, e2s, dfs_penalty=dfs_penalty)
             else:
-                curr_walk, curr_key_nodes, curr_penalty = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, e2s, dfs_penalty)
+                curr_walk, curr_key_nodes, curr_penalty = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, e2s, dfs_penalty=dfs_penalty)
                 curr_walk.reverse()
             if curr_key_nodes > best_key_nodes or (curr_key_nodes == best_key_nodes and curr_penalty < best_penalty):
                 best_key_nodes = curr_key_nodes
@@ -856,9 +743,9 @@ def get_walks_telomere(walk_ids, adj_list, telo_ref, e2s, dfs_penalty):
     while non_telo_walk_ids:
         best_walk, best_key_nodes, best_penalty = [], 0, 0
         for walk_id in non_telo_walk_ids: # the node_id is also the index
-            curr_walk, curr_key_nodes, curr_penalty = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, e2s, dfs_penalty)
+            curr_walk, curr_key_nodes, curr_penalty = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, e2s, dfs_penalty=dfs_penalty)
             visited_init = set(curr_walk[1:]) if len(curr_walk) > 1 else set()
-            curr_walk_rev, curr_key_nodes_rev, curr_penalty_rev = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, e2s, dfs_penalty, visited_init=visited_init)
+            curr_walk_rev, curr_key_nodes_rev, curr_penalty_rev = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, e2s, visited=visited_init, dfs_penalty=dfs_penalty)
             curr_walk_rev.reverse(); curr_walk_rev = curr_walk_rev[:-1]; curr_walk_rev.extend(curr_walk); curr_walk = curr_walk_rev
             curr_key_nodes += (curr_key_nodes_rev-1)
             curr_penalty += curr_penalty_rev
@@ -991,7 +878,6 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
         n2s=n2s,
         old_graph=old_graph,
         walk_valid_p=hyperparams['walk_valid_p'],
-        score_cutoff_p=hyperparams['score_cutoff_p'],
         gnnome_config=gnnome_config,
         model_path=paths['model']
     )
@@ -1045,10 +931,7 @@ def run_postprocessing(config):
         aux['hifi_r2s'] = Fasta(paths['ec_reads'])
         aux['ul_r2s'] = Fasta(paths['ul_reads']) if paths['ul_reads'] else None
 
-        # postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
+        postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
         # for w in [0.005, 0.0025, 0.001]:
         #     postprocessing_config['walk_valid_p'] = w
         #     postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
-        for p in [5, 2.5, 0]:
-            postprocessing_config['score_cutoff_p'] = p
-            postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
