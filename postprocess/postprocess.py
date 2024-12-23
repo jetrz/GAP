@@ -605,7 +605,7 @@ def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, e2s, visited=set(
         c_node = highest_score.new_dst_nid
         visited.add(c_node)
 
-        if telo_ref[highest_score.new_dst_nid]['start'] or telo_ref[highest_score.new_dst_nid]['end']: break # if current node has a telomere, it should stop searching
+        if c_node < n_old_walks and (telo_ref[highest_score.new_dst_nid]['start'] or telo_ref[highest_score.new_dst_nid]['end']): break # if current node has a telomere, it should stop searching
 
     if walk[-1] >= n_old_walks: walk.pop()
 
