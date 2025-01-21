@@ -1,25 +1,35 @@
 run:
   preprocessing:
     source: 'hifiasm'
-    genomes:
-      - 'tomato_ont'
-      - 'arab_ont'
-      - 'chicken'
+    genomes: ~
   generate_baseline:
     source: 'hifiasm'
-    genomes:
-      - 'tomato_ont'
-      - 'arab_ont'
-      - 'chicken'
+    genomes: ~
   postprocessing:
     genomes:
-      - 'tomato_ont'
-      - 'arab_ont'
       - 'chicken'
-      
+      # - 'mouse'
+      # - 'maize'
+      # - 'chm13'
+      # - 'hg002_d_20x_scaf_p'
+      # - 'hg002_d_20x_scaf_m'
+      # - 'bonobo_d_20x_scaf_p'
+      # - 'bonobo_d_20x_scaf_m'
+      # - 'gorilla_d_20x_scaf_p'
+      # - 'gorilla_d_20x_scaf_m'
+      # - 'fruitfly_ont'
+      # - 'tomato_ont'
+      # - 'arab_ont'
+      # - 'hg002_d_ont_scaf_p'
+      # - 'hg002_d_ont_scaf_m'
+      # - 'hg005_d_ont_scaf_p'
+      # - 'hg005_d_ont_scaf_m'
+      # - 'gorilla_d_ont_20x_scaf_p'
+      # - 'gorilla_d_ont_20x_scaf_m'
+
 postprocessing:
-  walk_valid_p: 0.0025
-  use_telomere_info : false
+  walk_valid_p: 0.001
+  use_telomere_info : true
   dfs_penalty: null # None, ol_len or ol_sim
   walk_var: 'telomere' # default or telomere
 
@@ -30,6 +40,7 @@ misc:
     minigraph: '/home/stumanuel/GitHub/minigraph/minigraph'
     paftools: '/home/stumanuel/GitHub/minimap2/misc/paftools.js'
     yak: '/home/stumanuel/GitHub/yak/yak'
+    t2t_chr: '/home/stumanuel/GitHub/T2T_Sequences/T2T_chromosomes.sh'
 
 
 

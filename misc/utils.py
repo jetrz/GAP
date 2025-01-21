@@ -1,4 +1,4 @@
-import dgl, os, subprocess, torch
+import dgl, glob, os, subprocess, torch
 from Bio import SeqIO
 
 def timedelta_to_str(delta):
@@ -86,6 +86,28 @@ def yak_metrics(save_path, yak1, yak2, yak_path):
         print("YAK Switch/Hamming error not found!")
     else:
         print(f"YAK Switch Err: {switch_err*100:.4f}%, YAK Hamming Err: {hamming_err*100:.4f}%")
+
+def t2t_metrics(save_path, t2t_chr_path, ref_path, motif):
+    print("Running T2T eval...")
+    if os.path.exists(save_path+"0_assembly.fasta.seqkit.fai"):
+        # This has been run before, delete and re-run
+        os.remove(save_path+"0_assembly.fasta.seqkit.fai")
+        pattern = os.path.join(save_path, "T2T*")
+        ftd = glob.glob(pattern)
+        for f in ftd:
+            os.remove(f)
+
+    cmd = f"{t2t_chr_path} -a {save_path}0_assembly.fasta -r {ref_path} -m {motif} -t 10"
+    subprocess.run(cmd, shell=True, cwd=save_path[:-1], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    aligned_path = f"{save_path}T2T_sequences_alignment_T2T.txt"
+    with open(aligned_path, 'r') as f:
+        aligned_count = sum(1 for _ in f)
+    unaligned_path = f"{save_path}T2T_sequences_motif_T2T.txt"
+    with open(unaligned_path, 'r') as f:
+        unaligned_count = sum(1 for _ in f)
+        
+    print(f"Unaligned T2T: {unaligned_count} | Aligned T2T: {aligned_count}")
+    return
 
 def get_seqs(id, hifi_r2s, ul_r2s):
     if id in hifi_r2s:
