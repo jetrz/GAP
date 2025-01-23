@@ -1,4 +1,4 @@
-import dgl, glob, os, subprocess, torch
+import dgl, glob, os, random, subprocess, torch
 from Bio import SeqIO
 
 def timedelta_to_str(delta):
@@ -36,8 +36,11 @@ def asm_metrics(contigs, save_path, ref_path, minigraph_path, paftools_path):
     SeqIO.write(contigs, asm_path, 'fasta')
 
     # need to replace ids this way for some reason else T2T_chromosomes tool won't work. idk why
-    cmd = 'seqkit replace -p .+ -r \"ctg{nr}\" --nr-width 10 0_assembly.fasta'
+    temp_name = f"temp_{random.randint(1,9999999)}.fasta"
+    cmd = 'seqkit replace -p .+ -r \"ctg{nr}\" --nr-width 10 0_assembly.fasta > ' + temp_name
     subprocess.run(cmd, shell=True, cwd=save_path[:-1], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    os.remove(asm_path)
+    os.rename(save_path+temp_name, asm_path)
 
     print(f"Running minigraph...")
     paf = save_path+"asm.paf"

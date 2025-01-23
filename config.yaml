@@ -7,8 +7,8 @@ run:
     genomes: ~
   postprocessing:
     genomes:
-      # - 'arab'
-      # - 'chicken'
+      - 'arab'
+      - 'chicken'
       - 'mouse'
       - 'maize'
       - 'chm13'
@@ -16,8 +16,8 @@ run:
       - 'hg002_d_20x_scaf_m'
       - 'bonobo_d_20x_scaf_p'
       - 'bonobo_d_20x_scaf_m'
-      - 'gorilla_d_20x_scaf_p'
-      - 'gorilla_d_20x_scaf_m'
+      # - 'gorilla_d_20x_scaf_p'
+      # - 'gorilla_d_20x_scaf_m'
       # - 'fruitfly_ont'
       # - 'tomato_ont'
       # - 'arab_ont'
