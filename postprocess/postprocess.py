@@ -524,7 +524,9 @@ def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, mem
         if node in memo: 
             memo_telo = memo[node][3]
             if check_telo_compatibility(walk_telo, memo_telo):
-                return memo[node][0], memo[node][1], memo[node][2]
+                last_node = memo[node][0]
+                is_final_t2t = walk_telo and last_node < n_old_walks and ((telo_ref[last_node]['start'] and telo_ref[last_node]['start'] != walk_telo) or (telo_ref[last_node]['end'] and telo_ref[last_node]['end'] != walk_telo))
+                return memo[node][0], memo[node][1], memo[node][2], is_final_t2t
 
         visited.add(node)
         max_walk, max_key_nodes, min_penalty, is_max_t2t = [node], 0, 0, False
