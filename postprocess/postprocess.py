@@ -834,7 +834,7 @@ def get_contigs(old_walks, new_walks, adj_list, n2s, n2s_ghost, g):
         c_contig = Seq.Seq(''.join(c_contig))
         c_contig = SeqIO.SeqRecord(c_contig)
         c_contig.id = f'contig_{str(i+1).zfill(10)}'
-        c_contig.description = f'length={len(c_contig)}'
+        c_contig.description = f'length={str(len(c_contig)).zfill(15)}'
         contigs.append(c_contig)
 
     return contigs
