@@ -35,6 +35,10 @@ def asm_metrics(contigs, save_path, ref_path, minigraph_path, paftools_path):
     asm_path = save_path+"0_assembly.fasta"
     SeqIO.write(contigs, asm_path, 'fasta')
 
+    # need to replace ids this way for some reason else T2T_chromosomes tool won't work. idk why
+    cmd = "seqkit replace -p .+ -r 'ctg{nr} --nr-width 10 0_assembly.fasta"
+    subprocess.run(cmd, shell=True, cwd=save_path[:-1], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
     print(f"Running minigraph...")
     paf = save_path+"asm.paf"
     cmd = f'{minigraph_path} -t32 -xasm -g10k -r10k --show-unmap=yes {ref_path} {asm_path}'.split(' ')
