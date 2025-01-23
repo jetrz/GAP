@@ -8,7 +8,7 @@ run:
   postprocessing:
     genomes:
       # - 'arab'
-      - 'chicken'
+      # - 'chicken'
       # - 'mouse'
       # - 'maize'
       # - 'chm13'
@@ -19,14 +19,14 @@ run:
       # - 'gorilla_d_20x_scaf_p'
       # - 'gorilla_d_20x_scaf_m'
       # - 'fruitfly_ont'
-      # - 'tomato_ont'
-      # - 'arab_ont'
-      # - 'hg002_d_ont_scaf_p'
-      # - 'hg002_d_ont_scaf_m'
-      # - 'hg005_d_ont_scaf_p'
-      # - 'hg005_d_ont_scaf_m'
-      # - 'gorilla_d_ont_20x_scaf_p'
-      # - 'gorilla_d_ont_20x_scaf_m'
+      - 'tomato_ont'
+      - 'arab_ont'
+      - 'hg002_d_ont_scaf_p'
+      - 'hg002_d_ont_scaf_m'
+      - 'hg005_d_ont_scaf_p'
+      - 'hg005_d_ont_scaf_m'
+      - 'gorilla_d_ont_20x_scaf_p'
+      - 'gorilla_d_ont_20x_scaf_m'
 
 postprocessing:
   walk_valid_p: 0.001

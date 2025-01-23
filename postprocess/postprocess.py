@@ -524,8 +524,8 @@ def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, mem
         if node in memo: 
             memo_telo = memo[node][3]
             if check_telo_compatibility(walk_telo, memo_telo):
-                last_node = memo[node][0]
-                is_final_t2t = walk_telo and last_node < n_old_walks and ((telo_ref[last_node]['start'] and telo_ref[last_node]['start'] != walk_telo) or (telo_ref[last_node]['end'] and telo_ref[last_node]['end'] != walk_telo))
+                last_node = memo[node][0][-1]
+                is_final_t2t = walk_telo and last_node < n_old_walks and ((telo_ref[last_node]['start'] and telo_ref[last_node]['start'] != walk_telo[1]) or (telo_ref[last_node]['end'] and telo_ref[last_node]['end'] != walk_telo[1]))
                 return memo[node][0], memo[node][1], memo[node][2], is_final_t2t
 
         visited.add(node)
@@ -591,7 +591,7 @@ def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, mem
                 curr_telo = get_telo_info(max_walk[-2])
             memo[node] = (max_walk, max_key_nodes, min_penalty, curr_telo)
 
-        is_final_t2t = walk_telo and max_walk[-1] < n_old_walks and ((telo_ref[max_walk[-1]]['start'] and telo_ref[max_walk[-1]]['start'] != walk_telo) or (telo_ref[max_walk[-1]]['end'] and telo_ref[max_walk[-1]]['end'] != walk_telo))
+        is_final_t2t = walk_telo and max_walk[-1] < n_old_walks and ((telo_ref[max_walk[-1]]['start'] and telo_ref[max_walk[-1]]['start'] != walk_telo[1]) or (telo_ref[max_walk[-1]]['end'] and telo_ref[max_walk[-1]]['end'] != walk_telo[1]))
 
         return max_walk, max_key_nodes, min_penalty, is_final_t2t
 
@@ -833,7 +833,7 @@ def get_contigs(old_walks, new_walks, adj_list, n2s, n2s_ghost, g):
 
         c_contig = Seq.Seq(''.join(c_contig))
         c_contig = SeqIO.SeqRecord(c_contig)
-        c_contig.id = f'contig_{i+1}'
+        c_contig.id = f'contig_{str(i+1).zfill(10)}'
         c_contig.description = f'length={len(c_contig)}'
         contigs.append(c_contig)
 

@@ -27,7 +27,7 @@ def pyg_to_dgl(g, node_attrs, edge_attrs):
 
 def asm_metrics(contigs, save_path, ref_path, minigraph_path, paftools_path):
     """
-    Runs and saves minigraph.
+    Saves the assembly and runs minigraph.
     """
     print(f"Saving assembly...")
     if not os.path.exists(save_path):
