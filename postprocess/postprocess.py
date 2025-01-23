@@ -214,7 +214,7 @@ def chop_walks_seqtk(old_walks, n2s, graph, rep1, rep2, seqtk_path):
         if v['start'] == '-': rep2_count += 1
         if v['end'] == '-': rep2_count += 1
     print(f"Chopping complete! n Old Walks: {len(old_walks)}, n New Walks: {len(new_walks)}, n +ve telomeric regions: {rep1_count}, n -ve telomeric regions: {rep2_count}")
-    
+
     return new_walks, telo_ref
 
 def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, walk_valid_p):
@@ -460,7 +460,7 @@ def deduplicate(adj_list, old_walks):
     print("Final number of edges:", sum(len(x) for x in adj_list.adj_list.values()))
     return adj_list
 
-def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, memo_chances=1000, visited_init=set()):
+def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, memo_chances=10000, visited_init=set()):
     """
     Given a start node, run the greedy DFS to retrieve the walk with the most key nodes.
 
@@ -527,7 +527,7 @@ def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, mem
                 return memo[node][0], memo[node][1], memo[node][2]
 
         visited.add(node)
-        max_walk, max_key_nodes, min_penalty = [node], 0, 0
+        max_walk, max_key_nodes, min_penalty, is_max_t2t = [node], 0, 0, False
 
         # Traverse all the neighbors of the current node
         for neighbor in adj_list.get_neighbours(node):
@@ -546,10 +546,10 @@ def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, mem
 
             if terminate:
                 # Terminate search at the next node due to telomere compatibility
-                current_walk, current_key_nodes, current_penalty = [dst], 1, 0
+                current_walk, current_key_nodes, current_penalty, is_curr_t2t = [dst], 1, 0, True
             else:
                 # Perform DFS on the neighbor and check the longest walk from that neighbor
-                current_walk, current_key_nodes, current_penalty = dfs(dst, visited, walk_telo)
+                current_walk, current_key_nodes, current_penalty, is_curr_t2t = dfs(dst, visited, walk_telo)
                 # We have to check if there are duplicates in the returned walk. This is because of memoisation, where a returned memoised result can bypass visited set check.
                 current_walk, current_key_nodes, current_penalty = dedup(node, current_walk, current_key_nodes, current_penalty)
 
@@ -567,8 +567,10 @@ def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, mem
                 elif penalty == "ol_sim":
                     current_penalty -= curr_edge.ol_sim
 
-            # If adding this walk leads to a longer path, or same one with same length but lower penalty, update the max_walk and min_penalty
-            if (current_key_nodes > max_key_nodes) or (current_key_nodes == max_key_nodes and current_penalty < min_penalty):
+            # Update the best walk
+            if is_max_t2t and not is_curr_t2t: continue
+            if (current_key_nodes > max_key_nodes) or (current_key_nodes == max_key_nodes and current_penalty < min_penalty) or (is_curr_t2t and not is_max_t2t):
+                is_max_t2t = is_curr_t2t
                 max_walk = [node] + current_walk
                 max_key_nodes = current_key_nodes
                 min_penalty = current_penalty
@@ -587,10 +589,12 @@ def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, mem
                 curr_telo = get_telo_info(max_walk[-2])
             memo[node] = (max_walk, max_key_nodes, min_penalty, curr_telo)
 
-        return max_walk, max_key_nodes, min_penalty    
+        is_final_t2t = walk_telo and max_walk[-1] < n_old_walks and ((telo_ref[max_walk[-1]]['start'] and telo_ref[max_walk[-1]]['start'] != walk_telo) or (telo_ref[max_walk[-1]]['end'] and telo_ref[max_walk[-1]]['end'] != walk_telo))
+
+        return max_walk, max_key_nodes, min_penalty, is_final_t2t
 
     # Start DFS from the given start node
-    res_walk, res_key_nodes, res_penalty = dfs(start_node, visited_init, None)
+    res_walk, res_key_nodes, res_penalty, is_res_t2t = dfs(start_node, visited_init, None)
 
     # If the last node in a walk is a ghost node, remove it from the walk and negate its penalty.
     # This case should not occur, but I am just double checking
@@ -602,7 +606,7 @@ def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, mem
             res_penalty -= curr_edge.ol_sim
         res_walk.pop()
 
-    return res_walk, res_key_nodes, res_penalty
+    return res_walk, res_key_nodes, res_penalty, is_res_t2t
 
 def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty):
     """
@@ -642,9 +646,9 @@ def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty):
     while temp_walk_ids:
         best_walk, best_key_nodes, best_penalty = [], 0, 0
         for walk_id in temp_walk_ids: # the node_id is also the index
-            curr_walk, curr_key_nodes, curr_penalty = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
+            curr_walk, curr_key_nodes, curr_penalty, _ = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
             visited_init = set(curr_walk[1:]) if len(curr_walk) > 1 else set()
-            curr_walk_rev, curr_key_nodes_rev, curr_penalty_rev = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty, visited_init=visited_init)
+            curr_walk_rev, curr_key_nodes_rev, curr_penalty_rev, _ = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty, visited_init=visited_init)
             curr_walk_rev.reverse(); curr_walk_rev = curr_walk_rev[:-1]; curr_walk_rev.extend(curr_walk); curr_walk = curr_walk_rev
             curr_key_nodes += (curr_key_nodes_rev-1)
             curr_penalty += curr_penalty_rev
@@ -705,28 +709,17 @@ def get_walks_telomere(walk_ids, adj_list, telo_ref, dfs_penalty):
             telo_walk_ids.append(i)
         else:
             non_telo_walk_ids.append(i)
-
-    def is_t2t(walk):
-        # Checks if walk is T2T
-        if len(walk) == 1:
-            if telo_ref[walk[0]]['start'] is None or telo_ref[walk[0]]['end'] is None: return False
-            return telo_ref[walk[0]]['start'] != telo_ref[walk[0]]['end']
-
-        first_node, last_node = walk[0], walk[-1]
-        if telo_ref[first_node]['start'] is None or telo_ref[last_node]['end'] is None: return False
-        return telo_ref[first_node]['start'] != telo_ref[last_node]['end']
         
     # Generate walks for walks with telomeric regions first
     while telo_walk_ids:
         best_walk, best_key_nodes, best_penalty, is_best_t2t = [], 0, 0, False
         for walk_id in telo_walk_ids: # the node_id is also the index
             if telo_ref[walk_id]['start']:
-                curr_walk, curr_key_nodes, curr_penalty = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
+                curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
             else:
-                curr_walk, curr_key_nodes, curr_penalty = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
+                curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
                 curr_walk.reverse()
 
-            is_curr_t2t = is_t2t(curr_walk)
             if is_best_t2t and not is_curr_t2t: continue
             if curr_key_nodes > best_key_nodes or (curr_key_nodes == best_key_nodes and curr_penalty < best_penalty) or (is_curr_t2t and not is_best_t2t):
                 is_best_t2t = is_curr_t2t
@@ -751,9 +744,9 @@ def get_walks_telomere(walk_ids, adj_list, telo_ref, dfs_penalty):
     while non_telo_walk_ids:
         best_walk, best_key_nodes, best_penalty = [], 0, 0
         for walk_id in non_telo_walk_ids: # the node_id is also the index
-            curr_walk, curr_key_nodes, curr_penalty = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
+            curr_walk, curr_key_nodes, curr_penalty, _ = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
             visited_init = set(curr_walk[1:]) if len(curr_walk) > 1 else set()
-            curr_walk_rev, curr_key_nodes_rev, curr_penalty_rev = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty, visited_init=visited_init)
+            curr_walk_rev, curr_key_nodes_rev, curr_penalty_rev, _ = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty, visited_init=visited_init)
             curr_walk_rev.reverse(); curr_walk_rev = curr_walk_rev[:-1]; curr_walk_rev.extend(curr_walk); curr_walk = curr_walk_rev
             curr_key_nodes += (curr_key_nodes_rev-1)
             curr_penalty += curr_penalty_rev
@@ -784,7 +777,7 @@ def get_contigs(old_walks, new_walks, adj_list, n2s, n2s_ghost, g):
 
     # print("Preprocessing walks...")
     # Create a list of all edges
-    edges_full = {}  ## I dont know why this is necessary. but when cut transitives some edges are wrong otherwise. (This is from Martin's script)
+    edges_full = {}  # I dont know why this is necessary. but when cut transitives some edges are wrong otherwise. (This is from Martin's script)
     for idx, (src, dst) in enumerate(zip(g.edges()[0], g.edges()[1])):
         src, dst = src.item(), dst.item()
         edges_full[(src, dst)] = idx

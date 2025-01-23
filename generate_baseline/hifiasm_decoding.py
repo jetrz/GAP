@@ -4,9 +4,9 @@ from datetime import datetime
 import pickle
 from pyfaidx import Fasta
 
-from misc.utils import asm_metrics, get_seqs, timedelta_to_str, yak_metrics
+from misc.utils import asm_metrics, get_seqs, timedelta_to_str, yak_metrics, t2t_metrics
 
-def hifiasm_decoding(paths):
+def hifiasm_decoding(paths, motif):
     time_start = datetime.now()
 
     print(f"Loading files... (Time: {timedelta_to_str(datetime.now() - time_start)})")
@@ -81,6 +81,7 @@ def hifiasm_decoding(paths):
 
     print(f"Calculating assembly metrics... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     asm_metrics(contigs, paths['baseline'], paths['ref'], paths['minigraph'], paths['paftools'])
+    t2t_metrics(paths['baseline'], paths['t2t_chr'], paths['ref'], motif)
     if paths['yak1'] and paths['yak2']: yak_metrics(paths['baseline'], paths['yak1'], paths['yak2'], paths['yak'])
 
     print(f"Run finished! (Time: {timedelta_to_str(datetime.now() - time_start)})")

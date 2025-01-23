@@ -7,6 +7,7 @@ run:
     genomes: ~
   postprocessing:
     genomes:
+      # - 'arab'
       - 'chicken'
       # - 'mouse'
       # - 'maize'
