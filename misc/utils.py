@@ -174,10 +174,9 @@ def analyse_graph(adj_list, telo_ref, walks, save_path):
     }
     colors = [color_map[c] for c in colors]
 
-    pos = nx.kamada_kawai_layout(nxg)
-
-    plt.figure(figsize=(30,30))
-    nx.draw(nxg, with_labels=True, node_color=colors, node_size=50, font_size=9)
+    pos = nx.spring_layout(nxg, seed=42)
+    plt.figure(figsize=(25,25))
+    nx.draw(nxg, pos=pos, with_labels=True, node_color=colors, node_size=50, font_size=9)
     legend_handles = [mpatches.Patch(color=color_map[key], label=labels[key]) for key in sorted(color_map)]
     plt.legend(handles=legend_handles, loc='best')
     plt.savefig(save_path+'nx_graph_before.png')
@@ -187,7 +186,8 @@ def analyse_graph(adj_list, telo_ref, walks, save_path):
     for w in walks:
         for i, n in enumerate(w[:-1]):
             nxg.add_edge(n, w[i+1])
-    nx.draw(nxg, pos, with_labels=True, node_color=colors, node_size=50, font_size=9)
+
+    nx.draw(nxg, pos=pos, with_labels=True, node_color=colors, node_size=50, font_size=9)
     legend_handles = [mpatches.Patch(color=color_map[key], label=labels[key]) for key in sorted(color_map)]
     plt.legend(handles=legend_handles, loc='best')
     plt.savefig(save_path+'nx_graph_after.png')
