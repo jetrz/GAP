@@ -1,5 +1,9 @@
 import dgl, glob, os, random, subprocess, torch
 from Bio import SeqIO
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import networkx as nx
+import pickle
 
 def timedelta_to_str(delta):
     hours, remainder = divmod(delta.seconds, 3600)
@@ -124,6 +128,71 @@ def get_seqs(id, hifi_r2s, ul_r2s):
         return str(ul_r2s[id][:]), str(-ul_r2s[id][:])
     else:
         raise ValueError("Read not present in seq dataset FASTAs!")
+    
+def analyse_graph(adj_list, telo_ref, walks, save_path):
+    # For debugging
+    nxg = nx.DiGraph()
+    for source, neighs in adj_list.adj_list.items():
+        for n in neighs:
+            nxg.add_edge(source, n.new_dst_nid)
+    pickle.dump(nxg, open(save_path+"nx_graph.pkl", 'wb'))
+
+    colors = []
+    for n in nxg.nodes():
+        if n not in telo_ref:
+            colors.append(0)
+        elif telo_ref[n]['start'] and telo_ref[n]['end']:
+            colors.append(1)
+        elif telo_ref[n]['start']:
+            if telo_ref[n]['start'] == '+':
+                colors.append(2)
+            else:
+                colors.append(3)
+        elif telo_ref[n]['end']:
+            if telo_ref[n]['end'] == '+':
+                colors.append(4)
+            else:
+                colors.append(5)
+        else:
+            colors.append(0)
+
+    color_map = {
+        0: 'grey',
+        1: 'green',
+        2: 'red',
+        3: 'blue',
+        4: 'yellow',
+        5: 'purple'
+    }
+    labels = {
+        0: 'No telomere',
+        1: 'Both start and end',
+        2: 'Start (+)',
+        3: 'Start (-)',
+        4: 'End (+)',
+        5: 'End (-)'
+    }
+    colors = [color_map[c] for c in colors]
+
+    pos = nx.kamada_kawai_layout(nxg)
+
+    plt.figure(figsize=(30,30))
+    nx.draw(nxg, with_labels=True, node_color=colors, node_size=50, font_size=9)
+    legend_handles = [mpatches.Patch(color=color_map[key], label=labels[key]) for key in sorted(color_map)]
+    plt.legend(handles=legend_handles, loc='best')
+    plt.savefig(save_path+'nx_graph_before.png')
+    plt.clf()
+
+    nxg.remove_edges_from(list(nxg.edges()))
+    for w in walks:
+        for i, n in enumerate(w[:-1]):
+            nxg.add_edge(n, w[i+1])
+    nx.draw(nxg, pos, with_labels=True, node_color=colors, node_size=50, font_size=9)
+    legend_handles = [mpatches.Patch(color=color_map[key], label=labels[key]) for key in sorted(color_map)]
+    plt.legend(handles=legend_handles, loc='best')
+    plt.savefig(save_path+'nx_graph_after.png')
+
+    return
 
 def print_ascii():
     """hehe"""

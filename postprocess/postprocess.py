@@ -5,7 +5,7 @@ from copy import deepcopy
 from datetime import datetime
 from pyfaidx import Fasta
 
-from misc.utils import asm_metrics, get_seqs, timedelta_to_str, yak_metrics, t2t_metrics
+from misc.utils import analyse_graph, asm_metrics, get_seqs, timedelta_to_str, yak_metrics, t2t_metrics
 
 class Edge():
     def __init__(self, new_src_nid, new_dst_nid, old_src_nid, old_dst_nid, prefix_len, ol_len, ol_sim):
@@ -489,7 +489,7 @@ def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, mem
     def check_telo_compatibility(t1, t2):
         if t1 is None or t2 is None:
             return True
-        elif t1[0] != t2[0] and t1[1] != t2[1]: # The position must be different, and motif var must be different.
+        elif t1[1] != t2[1]: # The motif var must be different. Not checking position (i.e. 'start', 'end') for now.
             return True
         else:
             return False
@@ -902,6 +902,7 @@ def postprocess(name, hyperparams, paths, aux):
     contigs = get_contigs(walks, new_walks, adj_list, n2s, n2s_ghost, old_graph)
 
     print(f"Calculating assembly metrics... (Time: {timedelta_to_str(datetime.now() - time_start)})")
+    analyse_graph(adj_list, telo_ref, new_walks, paths['save'])
     asm_metrics(contigs, paths['save'], paths['ref'], paths['minigraph'], paths['paftools'])
     t2t_metrics(paths['save'], paths['t2t_chr'], paths['ref'], hyperparams['telo_motif'][0])
     if paths['yak1'] and paths['yak2']: yak_metrics(paths['save'], paths['yak1'], paths['yak2'], paths['yak'])
