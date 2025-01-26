@@ -716,11 +716,21 @@ def get_walks_telomere(walk_ids, adj_list, telo_ref, dfs_penalty):
     while telo_walk_ids:
         best_walk, best_key_nodes, best_penalty, is_best_t2t = [], 0, 0, False
         for walk_id in telo_walk_ids: # the node_id is also the index
-            if telo_ref[walk_id]['start']:
-                curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
-            else:
-                curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
-                curr_walk.reverse()
+            curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
+            curr_walk_rev, curr_key_nodes_rev, curr_penalty_rev, is_curr_t2t_rev = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
+            if is_curr_t2t and is_curr_t2t_rev:
+                if curr_key_nodes_rev > curr_key_nodes:
+                    curr_walk = curr_walk_rev.reverse(); curr_key_nodes = curr_key_nodes_rev; curr_penalty = curr_penalty_rev; is_curr_t2t = is_curr_t2t_rev 
+            elif is_curr_t2t_rev:
+                curr_walk = curr_walk_rev.reverse(); curr_key_nodes = curr_key_nodes_rev; curr_penalty = curr_penalty_rev; is_curr_t2t = is_curr_t2t_rev 
+            elif curr_key_nodes_rev > curr_key_nodes:
+                curr_walk = curr_walk_rev.reverse(); curr_key_nodes = curr_key_nodes_rev; curr_penalty = curr_penalty_rev; is_curr_t2t = is_curr_t2t_rev 
+        
+            # if telo_ref[walk_id]['start']:
+            #     curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
+            # else:
+            #     curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
+            #     curr_walk.reverse()
 
             if is_best_t2t and not is_curr_t2t: continue
             if curr_key_nodes > best_key_nodes or (curr_key_nodes == best_key_nodes and curr_penalty < best_penalty) or (is_curr_t2t and not is_best_t2t):
