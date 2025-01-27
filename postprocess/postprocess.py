@@ -155,7 +155,7 @@ def chop_walks_seqtk(old_walks, n2s, graph, rep1, rep2, seqtk_path):
                         curr_walk.append(curr_node)
                         curr_ind += 1
                         if curr_node == end_node: break
-                    if len(curr_walk) > 2*init_walk_len and init_walk_len != 0: # if the telomeric region is as long as the walk preceding it, chop it off
+                    if init_walk_len != 0: # if there was anything before the telomeric region, include the region and chop the walk
                         new_walks.append(curr_walk.copy())
                         telo_ref[len(new_walks)-1] = {
                             'start' : None,
@@ -489,7 +489,7 @@ def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, mem
     def check_telo_compatibility(t1, t2):
         if t1 is None or t2 is None:
             return True
-        elif t1[1] != t2[1]: # The motif var must be different. Not checking position (i.e. 'start', 'end') for now.
+        elif t1[0] != t2[0] and t1[1] != t2[1]: # The position and motif var must be different.
             return True
         else:
             return False
@@ -715,22 +715,12 @@ def get_walks_telomere(walk_ids, adj_list, telo_ref, dfs_penalty):
     # Generate walks for walks with telomeric regions first
     while telo_walk_ids:
         best_walk, best_key_nodes, best_penalty, is_best_t2t = [], 0, 0, False
-        for walk_id in telo_walk_ids: # the node_id is also the index
-            curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
-            curr_walk_rev, curr_key_nodes_rev, curr_penalty_rev, is_curr_t2t_rev = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
-            if is_curr_t2t and is_curr_t2t_rev:
-                if curr_key_nodes_rev > curr_key_nodes:
-                    curr_walk = curr_walk_rev.reverse(); curr_key_nodes = curr_key_nodes_rev; curr_penalty = curr_penalty_rev; is_curr_t2t = is_curr_t2t_rev 
-            elif is_curr_t2t_rev:
-                curr_walk = curr_walk_rev.reverse(); curr_key_nodes = curr_key_nodes_rev; curr_penalty = curr_penalty_rev; is_curr_t2t = is_curr_t2t_rev 
-            elif curr_key_nodes_rev > curr_key_nodes:
-                curr_walk = curr_walk_rev.reverse(); curr_key_nodes = curr_key_nodes_rev; curr_penalty = curr_penalty_rev; is_curr_t2t = is_curr_t2t_rev 
-        
-            # if telo_ref[walk_id]['start']:
-            #     curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
-            # else:
-            #     curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
-            #     curr_walk.reverse()
+        for walk_id in telo_walk_ids: # the node_id is also the index        
+            if telo_ref[walk_id]['start']:
+                curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
+            else:
+                curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
+                curr_walk.reverse()
 
             if is_best_t2t and not is_curr_t2t: continue
             if curr_key_nodes > best_key_nodes or (curr_key_nodes == best_key_nodes and curr_penalty < best_penalty) or (is_curr_t2t and not is_best_t2t):
@@ -942,7 +932,7 @@ def run_postprocessing(config):
         aux['hifi_r2s'] = Fasta(paths['ec_reads'])
         aux['ul_r2s'] = Fasta(paths['ul_reads']) if paths['ul_reads'] else None
 
-        postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux)
-        # for w in [0.005, 0.0025, 0.001]:
-        #     postprocessing_config['walk_valid_p'] = w
-        #     postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux)
+        # postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux)
+        for w in [0.01, 0.0075, 0.005, 0.0025, 0.001]:
+            postprocessing_config['walk_valid_p'] = w
+            postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux)
