@@ -610,65 +610,6 @@ def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, mem
 
     return res_walk, res_key_nodes, res_penalty, is_res_t2t
 
-def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty):
-    """
-    Creates the new walks without prioritising nodes with telomeres.
-
-    1. Key nodes with start and end telomeres in its sequence are removed beforehand.
-    2. For all key nodes, we find the best walk starting from that node. The best walk out of all is then saved, and the process is repeated until all key nodes are used.
-        i. We each node we search forwards and backwards, then append the results together.
-    """
-
-    # Generating new walks using greedy DFS
-    new_walks = []
-    temp_walk_ids, temp_adj_list = deepcopy(walk_ids), deepcopy(adj_list)
-    n_old_walks = len(temp_walk_ids)
-    rev_adj_list = AdjList()
-    for edges in temp_adj_list.adj_list.values():
-        for e in edges:
-            rev_adj_list.add_edge(Edge(
-                new_src_nid=e.new_dst_nid,
-                new_dst_nid=e.new_src_nid,
-                old_src_nid=e.old_dst_nid,
-                old_dst_nid=e.old_src_nid,
-                prefix_len=e.prefix_len,
-                ol_len=e.ol_len,
-                ol_sim=e.ol_sim
-            ))
-
-    # Remove all old walks that have both start and end telo regions
-    for walk_id, v in telo_ref.items():
-        if v['start'] and v['end']:
-            new_walks.append([walk_id])
-            temp_adj_list.remove_node(walk_id)
-            rev_adj_list.remove_node(walk_id)
-            temp_walk_ids.remove(walk_id)
-
-    # Loop until all walks are connected
-    while temp_walk_ids:
-        best_walk, best_key_nodes, best_penalty = [], 0, 0
-        for walk_id in temp_walk_ids: # the node_id is also the index
-            curr_walk, curr_key_nodes, curr_penalty, _ = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
-            visited_init = set(curr_walk[1:]) if len(curr_walk) > 1 else set()
-            curr_walk_rev, curr_key_nodes_rev, curr_penalty_rev, _ = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty, visited_init=visited_init)
-            curr_walk_rev.reverse(); curr_walk_rev = curr_walk_rev[:-1]; curr_walk_rev.extend(curr_walk); curr_walk = curr_walk_rev
-            curr_key_nodes += (curr_key_nodes_rev-1)
-            curr_penalty += curr_penalty_rev
-            if curr_key_nodes > best_key_nodes or (curr_key_nodes == best_key_nodes and curr_penalty < best_penalty):
-                best_key_nodes = curr_key_nodes
-                best_walk = curr_walk
-                best_penalty = curr_penalty
-
-        for w in best_walk:
-            temp_adj_list.remove_node(w)
-            rev_adj_list.remove_node(w)
-            if w < n_old_walks: temp_walk_ids.remove(w)
-
-        new_walks.append(best_walk)
-
-    print(f"New walks generated! n new walks: {len(new_walks)}")
-    return new_walks
-
 def get_walks_telomere(walk_ids, adj_list, telo_ref, dfs_penalty):
     """
     Creates the new walks, priotising key nodes with telomeres.
@@ -891,12 +832,7 @@ def postprocess(name, hyperparams, paths, aux):
     adj_list = deduplicate(adj_list, walks)
 
     print(f"Generating new walks... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-    if hyperparams['walk_var'] == 'default':
-        new_walks = get_walks(walk_ids, adj_list, telo_ref, hyperparams['dfs_penalty'])
-    elif hyperparams['walk_var'] == 'telomere':
-        new_walks = get_walks_telomere(walk_ids, adj_list, telo_ref, hyperparams['dfs_penalty'])
-    else:
-        raise ValueError("Invalid walk_var!")
+    new_walks = get_walks_telomere(walk_ids, adj_list, telo_ref, hyperparams['dfs_penalty'])
 
     print(f"Generating contigs... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     contigs = get_contigs(walks, new_walks, adj_list, n2s, n2s_ghost, old_graph)
