@@ -32,6 +32,7 @@ postprocessing:
   walk_valid_p: 0.001
   use_telomere_info : true
   dfs_penalty: null # None, ol_len or ol_sim
+  decoding: 'gnnome_score' # 'default' or 'gnnome_score'
 
 misc:
   paths:
