@@ -565,7 +565,7 @@ def deduplicate(adj_list, old_walks):
     print("Final number of edges:", sum(len(x) for x in adj_list.adj_list.values()))
     return adj_list
 
-def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, memo_chances=10000, visited_init=set()):
+def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, memo_chances=10000, visited_init=None):
     """
     Given a start node, run the greedy DFS to retrieve the walk with the most key nodes.
 
@@ -701,6 +701,7 @@ def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, mem
         return max_walk, max_key_nodes, min_penalty, is_final_t2t
 
     # Start DFS from the given start node
+    if visited_init is None: visited_init = set()
     res_walk, res_key_nodes, res_penalty, is_res_t2t = dfs(start_node, visited_init, None)
 
     # If the last node in a walk is a ghost node, remove it from the walk and negate its penalty.
@@ -715,7 +716,7 @@ def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, mem
 
     return res_walk, res_key_nodes, res_penalty, is_res_t2t
 
-def get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, penalty=None, visited_init=set()):
+def get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, penalty=None, visited_init=None):
     """
     Given a start node, greedily performs DFS by recursively choosing the edge with the highest probabilty score while also checking telomere compatibility.
     Note: dfs penalty is currently not being used, but leaving it here for possible future extension. the last value returned (0) by this function represents the penalty of the best walk.
@@ -732,26 +733,40 @@ def get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, penal
             return None
 
     def check_telo_compatibility(t1, t2):
-        if t1 is None or t2 is None:
-            return True
+        if t2 is None:
+            return 0
+        elif t1 is None and t2 is not None:
+            return 1
         elif t1[0] != t2[0] and t1[1] != t2[1]: # The position and motif var must be different.
-            return True
+            return 1
         else:
-            return False
-        
-    walk, n_key_nodes, visited = [start_node], 1, visited_init
+            return -1
+
+    if visited_init is None: visited_init = set()
+    walk, n_key_nodes, visited, terminate = [start_node], 1, visited_init, False
     visited.add(start_node)
     c_node = start_node
     walk_telo = get_telo_info(start_node)
+
     while True:
         neighs = adj_list.get_neighbours(c_node)
-        c_neighs = []
+        c_neighs, c_neighs_terminate = [], []
         for n in neighs:
             if n.new_dst_nid in visited: continue
             curr_telo = get_telo_info(n.new_dst_nid)
-            if not check_telo_compatibility(walk_telo, curr_telo): continue
-            c_neighs.append(n)
-        if not c_neighs: break
+            telo_compatibility = check_telo_compatibility(walk_telo, curr_telo)
+            if telo_compatibility < 0:
+                continue
+            elif telo_compatibility > 0:
+                c_neighs_terminate.append(n)
+            else:
+                c_neighs.append(n)
+
+        if not c_neighs and not c_neighs_terminate: break
+
+        if c_neighs_terminate:
+            terminate = True
+            c_neighs = c_neighs_terminate
 
         highest_score = max(c_neighs, key=lambda n: e2s[c_node, n.new_dst_nid])
         walk.append(highest_score.new_dst_nid)
@@ -759,14 +774,14 @@ def get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, penal
         c_node = highest_score.new_dst_nid
         visited.add(c_node)
 
-        if c_node < n_old_walks and (telo_ref[highest_score.new_dst_nid]['start'] or telo_ref[highest_score.new_dst_nid]['end']): break # if current node has a telomere, it should stop searching
+        if terminate: break
 
     if walk[-1] >= n_old_walks: walk.pop()
     is_t2t = walk_telo and walk[-1] < n_old_walks and ((telo_ref[walk[-1]]['start'] and telo_ref[walk[-1]]['start'] != walk_telo[1]) or (telo_ref[walk[-1]]['end'] and telo_ref[walk[-1]]['end'] != walk_telo[1]))
 
     return walk, n_key_nodes, 0, is_t2t
 
-def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty):
+def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s=None):
     """
     Creates the new walks, priotising key nodes with telomeres.
 
@@ -814,9 +829,15 @@ def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty):
         best_walk, best_key_nodes, best_penalty, is_best_t2t = [], 0, 0, False
         for walk_id in telo_walk_ids: # the node_id is also the index        
             if telo_ref[walk_id]['start']:
-                curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
+                if e2s is None:
+                    curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
+                else:
+                    curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk_gnnome(temp_adj_list, walk_id, n_old_walks, telo_ref, e2s)
             else:
-                curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
+                if e2s is None:
+                    curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
+                else:
+                    curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk_gnnome(rev_adj_list, walk_id, n_old_walks, telo_ref, e2s)
                 curr_walk.reverse()
 
             if is_best_t2t and not is_curr_t2t: continue
@@ -843,107 +864,15 @@ def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty):
     while non_telo_walk_ids:
         best_walk, best_key_nodes, best_penalty = [], 0, 0
         for walk_id in non_telo_walk_ids: # the node_id is also the index
-            curr_walk, curr_key_nodes, curr_penalty, _ = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
-            visited_init = set(curr_walk[1:]) if len(curr_walk) > 1 else set()
-            curr_walk_rev, curr_key_nodes_rev, curr_penalty_rev, _ = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty, visited_init=visited_init)
-            curr_walk_rev.reverse(); curr_walk_rev = curr_walk_rev[:-1]; curr_walk_rev.extend(curr_walk); curr_walk = curr_walk_rev
-            curr_key_nodes += (curr_key_nodes_rev-1)
-            curr_penalty += curr_penalty_rev
-            if curr_key_nodes > best_key_nodes or (curr_key_nodes == best_key_nodes and curr_penalty < best_penalty):
-                best_key_nodes = curr_key_nodes
-                best_walk = curr_walk
-                best_penalty = curr_penalty
-
-        for w in best_walk:
-            temp_adj_list.remove_node(w)
-            rev_adj_list.remove_node(w)
-            if w < n_old_walks: non_telo_walk_ids.remove(w)
-
-        new_walks.append(best_walk)
-
-    print(f"New walks generated! n new walks: {len(new_walks)}")
-    return new_walks
-
-def get_walks_gnnome(walk_ids, adj_list, telo_ref, e2s, dfs_penalty):
-    """
-    Creates the new walks, priotising key nodes with telomeres.
-
-    1. Key nodes with start and end telomeres in its sequence are removed beforehand.
-    2. We separate out all key nodes that have telomeres. For each of these key nodes, we find the best walk starting from that node. The best walk out of all is then saved, and the process is repeated until all key nodes are used.
-        i. Depending on whether the telomere is in the start or end of the sequence, we search forwards or in reverse. We create a reversed version of the adj_list for this.
-    3. We then repeat the above step for all key nodes without telomere information that are still unused.
-    """ 
-
-    # Generating new walks using greedy DFS
-    new_walks = []
-    temp_walk_ids, temp_adj_list = deepcopy(walk_ids), deepcopy(adj_list)
-    n_old_walks = len(temp_walk_ids)
-    rev_adj_list = AdjList()
-    for edges in temp_adj_list.adj_list.values():
-        for e in edges:
-            rev_adj_list.add_edge(Edge(
-                new_src_nid=e.new_dst_nid,
-                new_dst_nid=e.new_src_nid,
-                old_src_nid=e.old_dst_nid,
-                old_dst_nid=e.old_src_nid,
-                prefix_len=e.prefix_len,
-                ol_len=e.ol_len,
-                ol_sim=e.ol_sim
-            ))
-
-    # Remove all old walks that have both start and end telo regions
-    for walk_id, v in telo_ref.items():
-        if v['start'] and v['end']:
-            new_walks.append([walk_id])
-            temp_adj_list.remove_node(walk_id)
-            rev_adj_list.remove_node(walk_id)
-            temp_walk_ids.remove(walk_id)
-
-    # Split walks into those with telomeric regions and those without
-    telo_walk_ids, non_telo_walk_ids = [], []
-    for i in temp_walk_ids:
-        if telo_ref[i]['start'] or telo_ref[i]['end']:
-            telo_walk_ids.append(i)
-        else:
-            non_telo_walk_ids.append(i)
-        
-    # Generate walks for walks with telomeric regions first
-    while telo_walk_ids:
-        best_walk, best_key_nodes, best_penalty, is_best_t2t = [], 0, 0, False
-        for walk_id in telo_walk_ids: # the node_id is also the index        
-            if telo_ref[walk_id]['start']:
-                curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk_gnnome(temp_adj_list, walk_id, n_old_walks, telo_ref, e2s, dfs_penalty)
+            if e2s is None:
+                curr_walk, curr_key_nodes, curr_penalty, _ = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
             else:
-                curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk_gnnome(rev_adj_list, walk_id, n_old_walks, telo_ref, e2s, dfs_penalty)
-                curr_walk.reverse()
-
-            if is_best_t2t and not is_curr_t2t: continue
-            if curr_key_nodes > best_key_nodes or (curr_key_nodes == best_key_nodes and curr_penalty < best_penalty) or (is_curr_t2t and not is_best_t2t):
-                is_best_t2t = is_curr_t2t
-                best_key_nodes = curr_key_nodes
-                best_walk = curr_walk
-                best_penalty = curr_penalty
-
-        for w in best_walk:
-            temp_adj_list.remove_node(w)
-            rev_adj_list.remove_node(w)
-            if w < n_old_walks: 
-                if w in telo_walk_ids:
-                    telo_walk_ids.remove(w)
-                else:
-                    non_telo_walk_ids.remove(w)
-
-        new_walks.append(best_walk)
-
-    assert len(telo_walk_ids) == 0, "Telomeric walks not all used!"
-
-    # Generate walks for the rest
-    while non_telo_walk_ids:
-        best_walk, best_key_nodes, best_penalty = [], 0, 0
-        for walk_id in non_telo_walk_ids: # the node_id is also the index
-            curr_walk, curr_key_nodes, curr_penalty, _ = get_best_walk_gnnome(temp_adj_list, walk_id, n_old_walks, telo_ref, e2s, dfs_penalty)
+                curr_walk, curr_key_nodes, curr_penalty, _ = get_best_walk_gnnome(temp_adj_list, walk_id, n_old_walks, telo_ref, e2s)
             visited_init = set(curr_walk[1:]) if len(curr_walk) > 1 else set()
-            curr_walk_rev, curr_key_nodes_rev, curr_penalty_rev, _ = get_best_walk_gnnome(rev_adj_list, walk_id, n_old_walks, telo_ref, e2s, dfs_penalty, visited_init=visited_init)
+            if e2s is None:
+                curr_walk_rev, curr_key_nodes_rev, curr_penalty_rev, _ = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty, visited_init=visited_init)
+            else:
+                curr_walk_rev, curr_key_nodes_rev, curr_penalty_rev, _ = get_best_walk_gnnome(rev_adj_list, walk_id, n_old_walks, telo_ref, e2s, visited_init=visited_init)
             curr_walk_rev.reverse(); curr_walk_rev = curr_walk_rev[:-1]; curr_walk_rev.extend(curr_walk); curr_walk = curr_walk_rev
             curr_key_nodes += (curr_key_nodes_rev-1)
             curr_penalty += curr_penalty_rev
@@ -972,7 +901,6 @@ def get_contigs(old_walks, new_walks, adj_list, n2s, n2s_ghost, g):
 
     n_old_walks = len(old_walks)
 
-    # print("Preprocessing walks...")
     # Create a list of all edges
     edges_full = {}  # I dont know why this is necessary. but when cut transitives some edges are wrong otherwise. (This is from Martin's script)
     for idx, (src, dst) in enumerate(zip(g.edges()[0], g.edges()[1])):
@@ -1017,7 +945,6 @@ def get_contigs(old_walks, new_walks, adj_list, n2s, n2s_ghost, g):
         walk_seqs.append(c_seqs)
         walk_prefix_lens.append(c_prefix_lens)
 
-    # print(f"Generating sequences...")
     contigs = []
     for i, seqs in enumerate(walk_seqs):
         prefix_lens = walk_prefix_lens[i]
@@ -1089,7 +1016,7 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
 
     print(f"Generating new walks... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     if hyperparams['decoding'] == 'gnnome_score':
-        new_walks = get_walks_gnnome(walk_ids, adj_list, telo_ref, e2s, hyperparams['dfs_penalty'])
+        new_walks = get_walks(walk_ids, adj_list, telo_ref, hyperparams['dfs_penalty'], e2s=e2s)
     else:
         if hyperparams['decoding'] != 'default': print("Unrecognised decoding hyperparam. Running default...")
         new_walks = get_walks(walk_ids, adj_list, telo_ref, hyperparams['dfs_penalty'])
@@ -1130,6 +1057,6 @@ def run_postprocessing(config):
         aux['ul_r2s'] = Fasta(paths['ul_reads']) if paths['ul_reads'] else None
 
         # postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
-        for w in [0.025, 0.02, 0.015]:
+        for w in [0.025, 0.02, 0.015, 0.01]:
             postprocessing_config['walk_valid_p'] = w
             postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
