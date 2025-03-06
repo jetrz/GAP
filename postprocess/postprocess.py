@@ -3,7 +3,6 @@ from Bio import Seq, SeqIO
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
-from functools import partial
 from multiprocessing import Pool
 from pyfaidx import Fasta
 from tqdm import tqdm
@@ -224,7 +223,7 @@ def chop_walks_seqtk(old_walks, n2s, graph, rep1, rep2, seqtk_path):
 
     return new_walks, telo_ref
 
-def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, walk_valid_p, gnnome_config, model_path, kmers_config, supp_path):
+def add_ghosts(old_walks, paf_data, r2n, ec_r2s, ul_r2s, n2s, old_graph, walk_valid_p, gnnome_config, model_path, kmers_config, supp_path):
     """
     Adds nodes and edges from the PAF and graph.
 
@@ -331,7 +330,8 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, walk_
     # Preprocess the sequences because pyfaidx doesn't play well with multiprocessing
     print("Preprocessing sequences...")
     for read_id in tqdm(ghost_data['+'].keys(), ncols=120):
-        seq, rev_seq = get_seqs(read_id, hifi_r2s, ul_r2s)
+        if read_id not in ec_r2s: raise ValueError("Use of UL reads currently not supported!")
+        seq, rev_seq = ec_r2s[read_id]
         ghost_data['+'][read_id]['seq'] = seq
         ghost_data['-'][read_id]['seq'] = rev_seq
 
@@ -953,29 +953,6 @@ def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s=None):
     print(f"New walks generated! n new walks: {len(new_walks)}")
     return new_walks
 
-# def check_cov(walks, n_old_walks, adj_list, n2s, n2s_ghost, k, supp_path):
-#     new_walks = []
-#     for walk in walks:
-#         curr_walk = [walk[0]]
-#         for i, n1 in enumerate(walk):
-#             if n1 >= n_old_walks or i+2 >= len(walk): continue
-#             n2, n3 = walk[i+1], walk[i+2]
-#             e1, e2 = adj_list.get_edge(n1, n2), adj_list.get_edge(n2, n3)
-#             s1, s2, s3 = n2s[e1.old_src_nid], n2s_ghost[n2], n2s[e2.old_dst_nid]
-
-#             if check_connection_cov(s1, s2, s3, k, supp_path):
-#                 curr_walk.extend([n2, n3])
-#             else:
-#                 new_walks.append(curr_walk)
-#                 curr_walk = [n3]
-
-#         new_walks.append(curr_walk)
-
-#     print("old walks:", walks)
-#     print("\n")
-#     print("new walks:", new_walks)
-#     return new_walks
-
 def get_contigs(old_walks, new_walks, adj_list, n2s, n2s_ghost, g):
     """
     Recreates the contigs given the new walks. 
@@ -1068,7 +1045,7 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
     for k, v in hyperparams.items():
         hyperparams_str += f"{k}: {v}, "
     print(hyperparams_str[:-2]+"\n")
-    walks, n2s, r2n, paf_data, old_graph, hifi_r2s, ul_r2s = aux['walks'], aux['n2s'], aux['r2n'], aux['paf_data'], aux['old_graph'], aux['hifi_r2s'], aux['ul_r2s']
+    walks, n2s, r2n, paf_data, old_graph, ec_r2s, ul_r2s = aux['walks'], aux['n2s'], aux['r2n'], aux['paf_data'], aux['old_graph'], aux['r2s'], aux['ul_r2s']
 
     print(f"Chopping old walks... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     if hyperparams['use_telomere_info']:
@@ -1082,7 +1059,7 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
         old_walks=walks,
         paf_data=paf_data,
         r2n=r2n,
-        hifi_r2s=hifi_r2s,
+        ec_r2s=ec_r2s,
         ul_r2s=ul_r2s,
         n2s=n2s,
         old_graph=old_graph,
@@ -1140,11 +1117,12 @@ def run_postprocessing(config):
             aux['r2n'] = pickle.load(f)
         with open(paths['paf_processed'], 'rb') as f:
             aux['paf_data'] = pickle.load(f)
+        with open(paths['hifiasm']+"r2s.pkl", 'rb') as f:
+            aux['r2s'] = pickle.load(f)
         aux['old_graph'] = dgl.load_graphs(paths['graph']+f'{genome}.dgl')[0][0]
-        aux['hifi_r2s'] = Fasta(paths['ec_reads'])
         aux['ul_r2s'] = Fasta(paths['ul_reads']) if paths['ul_reads'] else None
 
-        postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
-        # for w in [0.025, 0.02, 0.015, 0.01]:
-        #     postprocessing_config['walk_valid_p'] = w
-        #     postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
+        # postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
+        for diff in [0.5, 1, 1.5]:
+            postprocessing_config['kmers']['diff'] = diff
+            postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)

@@ -1,5 +1,5 @@
 from datetime import datetime
-import dgl, gc, pickle, torch
+import dgl, gc, pickle, subprocess, torch
 from pyfaidx import Fasta
 
 from misc.utils import pyg_to_dgl, timedelta_to_str
@@ -39,9 +39,14 @@ def run_preprocessing(config):
         paf_data = parse_paf(genome_info['paths'], aux)
         with open(genome_info['paths']['paf_processed'], "wb") as p:
             pickle.dump(paf_data, p)
-
         del aux, paf_data, g, dgl_g
         gc.collect()
+
+        print(f"Generating k-mer counts using Jellyfish... (Time: {timedelta_to_str(datetime.now() - time_start)})")
+        k = config['misc']['kmers']['k']
+        command = f"jellyfish count -m {k} -s 100M -t 10 -o {k}mers.jf -C {config['genome_info'][genome]['paths']['ec_reads']}"
+        subprocess.run(command, shell=True, cwd=config['genome_info'][genome]['paths']['graph'])
+
         print(f"Run finished! (Time: {timedelta_to_str(datetime.now() - time_start)})")
 
 
