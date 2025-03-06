@@ -122,11 +122,15 @@ def t2t_metrics(save_path, t2t_chr_path, ref_path, motif):
     return
 
 def get_seqs(id, hifi_r2s, ul_r2s):
-    if id in hifi_r2s:
-        return str(hifi_r2s[id][:]), str(-hifi_r2s[id][:])
-    elif ul_r2s is not None and id in ul_r2s:
-        return str(ul_r2s[id][:]), str(-ul_r2s[id][:])
-    else:
+    try:
+        if ul_r2s is None:
+            return str(hifi_r2s[id][:]), str(-hifi_r2s[id][:])
+        else:
+            if id in hifi_r2s:
+                return str(hifi_r2s[id][:]), str(-hifi_r2s[id][:])
+            else:
+                return str(ul_r2s[id][:]), str(-ul_r2s[id][:])
+    except Exception as e:
         raise ValueError("Read not present in seq dataset FASTAs!")
     
 def analyse_graph(adj_list, telo_ref, walks, save_path):

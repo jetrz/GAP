@@ -3,12 +3,16 @@ from Bio import Seq, SeqIO
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
+from functools import partial
+from multiprocessing import Pool
 from pyfaidx import Fasta
 from tqdm import tqdm
 
 from generate_baseline.gnnome_decoding import preprocess_graph
 from generate_baseline.SymGatedGCN import SymGatedGCNModel
 from misc.utils import analyse_graph, asm_metrics, get_seqs, timedelta_to_str, yak_metrics, t2t_metrics
+
+ORIENT, R2N, N2S, N2N_START, N2N_END, KMERS_CONFIG, SUPP_PATH = None, None, None, None, None, None, None # for use in adding ghost node multiprocessing
 
 class Edge():
     def __init__(self, new_src_nid, new_dst_nid, old_src_nid, old_dst_nid, prefix_len, ol_len, ol_sim):
@@ -321,62 +325,57 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, walk_
     n2s_ghost = {}
     ghost_data = ghost_data['hop_1'] # WE ONLY DO FOR 1-HOP FOR NOW
     added_nodes_count = 0
+    global ORIENT, R2N, N2S, N2N_START, N2N_END, KMERS_CONFIG, SUPP_PATH
+    R2N, N2S, N2N_START, N2N_END, KMERS_CONFIG, SUPP_PATH = r2n, n2s, n2n_start, n2n_end, kmers_config, supp_path
+
+    # Preprocess the sequences because pyfaidx doesn't play well with multiprocessing
+    print("Preprocessing sequences...")
+    for read_id in tqdm(ghost_data['+'].keys(), ncols=120):
+        seq, rev_seq = get_seqs(read_id, hifi_r2s, ul_r2s)
+        ghost_data['+'][read_id]['seq'] = seq
+        ghost_data['-'][read_id]['seq'] = rev_seq
+
     for orient in ['+', '-']:
         print("Orient:", orient)
-        for read_id, data in tqdm(ghost_data[orient].items(), ncols=120):
-            curr_out_neighbours, curr_in_neighbours = set(), set()
-            if orient == '+':
-                seq, _ = get_seqs(read_id, hifi_r2s, ul_r2s)
-            else:
-                _, seq = get_seqs(read_id, hifi_r2s, ul_r2s)
+        ORIENT = orient
+        with Pool(40) as pool:
+            results = pool.imap_unordered(parse_paf_ghost, ghost_data[orient].items(), chunksize=160)
+            for curr_out_neighbours, curr_in_neighbours, read_len in tqdm(results, total=len(ghost_data[orient]), ncols=120):
+                # ghost nodes are only useful if they have both at least one outgoing and one incoming edge
+                if not curr_out_neighbours or not curr_in_neighbours: continue
 
-            for i, out_read_id in enumerate(data['outs']):
-                out_n_id = r2n[out_read_id[0]][0] if out_read_id[1] == '+' else r2n[out_read_id[0]][1]
-                if out_n_id not in n2n_start: continue
-                if not check_connection_cov(seq, n2s[out_n_id], kmers_config, supp_path): continue
-                curr_out_neighbours.add((out_n_id, data['prefix_len_outs'][i], data['ol_len_outs'][i], data['ol_similarity_outs'][i]))
+                for n in curr_out_neighbours:
+                    adj_list.add_edge(Edge(
+                        new_src_nid=n_id,
+                        new_dst_nid=n2n_start[n[0]],
+                        old_src_nid=None,
+                        old_dst_nid=n[0],
+                        prefix_len=n[1],
+                        ol_len=n[2],
+                        ol_sim=n[3]
+                    ))
+                    ngeid[0].append(dgl_nid); ngeid[1].append(new_old_nids[n[0]])
+                    ngneid[0].append(n_id); ngneid[1].append(n2n_start[n[0]]) 
+                    ngos.append(n[3]); ngol.append(n[2]); ngpl.append(n[1])
+                for n in curr_in_neighbours:
+                    adj_list.add_edge(Edge(
+                        new_src_nid=n2n_end[n[0]],
+                        new_dst_nid=n_id,
+                        old_src_nid=n[0],
+                        old_dst_nid=None,
+                        prefix_len=n[1],
+                        ol_len=n[2],
+                        ol_sim=n[3]
+                    ))
+                    ngeid[0].append(new_old_nids[n[0]]); ngeid[1].append(dgl_nid)
+                    ngneid[0].append(n2n_end[n[0]]); ngneid[1].append(n_id)
+                    ngos.append(n[3]); ngol.append(n[2]); ngpl.append(n[1])
 
-            for i, in_read_id in enumerate(data['ins']):
-                in_n_id = r2n[in_read_id[0]][0] if in_read_id[1] == '+' else r2n[in_read_id[0]][1] 
-                if in_n_id not in n2n_end: continue
-                if not check_connection_cov(n2s[in_n_id], seq, kmers_config, supp_path): continue
-                curr_in_neighbours.add((in_n_id, data['prefix_len_ins'][i], data['ol_len_ins'][i], data['ol_similarity_ins'][i]))
-
-            # ghost nodes are only useful if they have both at least one outgoing and one incoming edge
-            if not curr_out_neighbours or not curr_in_neighbours: continue
-
-            for n in curr_out_neighbours:
-                adj_list.add_edge(Edge(
-                    new_src_nid=n_id,
-                    new_dst_nid=n2n_start[n[0]],
-                    old_src_nid=None,
-                    old_dst_nid=n[0],
-                    prefix_len=n[1],
-                    ol_len=n[2],
-                    ol_sim=n[3]
-                ))
-                ngeid[0].append(dgl_nid); ngeid[1].append(new_old_nids[n[0]])
-                ngneid[0].append(n_id); ngneid[1].append(n2n_start[n[0]]) 
-                ngos.append(n[3]); ngol.append(n[2]); ngpl.append(n[1])
-            for n in curr_in_neighbours:
-                adj_list.add_edge(Edge(
-                    new_src_nid=n2n_end[n[0]],
-                    new_dst_nid=n_id,
-                    old_src_nid=n[0],
-                    old_dst_nid=None,
-                    prefix_len=n[1],
-                    ol_len=n[2],
-                    ol_sim=n[3]
-                ))
-                ngeid[0].append(new_old_nids[n[0]]); ngeid[1].append(dgl_nid)
-                ngneid[0].append(n2n_end[n[0]]); ngneid[1].append(n_id)
-                ngos.append(n[3]); ngol.append(n[2]); ngpl.append(n[1])
-
-            n2s_ghost[n_id] = seq
-            n_id += 1
-            ngrl.append(data['read_len'])
-            dgl_nid += 1
-            added_nodes_count += 1
+                n2s_ghost[n_id] = seq
+                n_id += 1
+                ngrl.append(read_len)
+                dgl_nid += 1
+                added_nodes_count += 1
     print("Number of nodes added from PAF:", added_nodes_count)
 
     print(f"Adding ghost nodes from old graph...")
@@ -498,14 +497,31 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, walk_
         return adj_list, walk_ids, n2s_ghost, e2s
     else:
         return None, None, None, None
+
+def parse_paf_ghost(pair):
+    read_id, data = pair
+    curr_out_neighbours, curr_in_neighbours = set(), set()
+
+    for i, out_read_id in enumerate(data['outs']):
+        out_n_id = R2N[out_read_id[0]][0] if out_read_id[1] == '+' else R2N[out_read_id[0]][1]
+        if out_n_id not in N2N_START: continue
+        if not check_connection_cov(data['seq'], N2S[out_n_id], KMERS_CONFIG, SUPP_PATH): continue
+        curr_out_neighbours.add((out_n_id, data['prefix_len_outs'][i], data['ol_len_outs'][i], data['ol_similarity_outs'][i]))
+
+    for i, in_read_id in enumerate(data['ins']):
+        in_n_id = R2N[in_read_id[0]][0] if in_read_id[1] == '+' else R2N[in_read_id[0]][1] 
+        if in_n_id not in N2N_END: continue
+        if not check_connection_cov(N2S[in_n_id], data['seq'], KMERS_CONFIG, SUPP_PATH): continue
+        curr_in_neighbours.add((in_n_id, data['prefix_len_ins'][i], data['ol_len_ins'][i], data['ol_similarity_ins'][i]))
     
+    return curr_out_neighbours, curr_in_neighbours, data['read_len']
+
 def check_connection_cov(s1, s2, kmers_config, supp_path, s3=None):
     """
     Validates an edge based on relative coverage, calculated using k-mer frequency. 
     If the difference in coverage between two sequences is too great, the edge is rejected.
     """
-    k, diff = kmers_config['k'], kmers_config['diff']
-    n = 999
+    k, diff, n = kmers_config['k'], kmers_config['diff'], kmers_config['n']
 
     def get_avg_cov(seq):
         kmer_list = []

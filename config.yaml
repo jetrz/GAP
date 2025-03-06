@@ -23,8 +23,8 @@ run:
       # - 'fruitfly_ont'
   postprocessing:
     genomes:
-      - 'arab'
-      - 'chicken'
+      # - 'arab'
+      # - 'chicken'
       - 'mouse'
       - 'maize'
       - 'chm13'
@@ -54,6 +54,7 @@ misc:
   kmers:
     k: 21
     diff: 1
+    n: 999
   paths:
     model: '/home/stumanuel/GAP/misc/default_best.pt'
     seqtk: '/home/stumanuel/GitHub/seqtk/seqtk'
