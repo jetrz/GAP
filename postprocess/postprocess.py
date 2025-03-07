@@ -402,18 +402,23 @@ def add_ghosts(old_walks, paf_data, r2n, ec_r2s, ul_r2s, n2s, old_graph, walk_va
             graph_data[dst_node]['prefix_len_ins'].append(prefix_len)
 
     # add to adj list where applicable
+    k = kmers_config['k']
     for old_node_id, data in tqdm(graph_data.items(), ncols=120):
         curr_out_neighbours, curr_in_neighbours = set(), set()
         seq = n2s[old_node_id]
 
         for i, out_n_id in enumerate(data['outs']):
             if out_n_id not in n2n_start: continue
-            if not check_connection_cov(seq[:-data['ol_len_outs'][i]], n2s[out_n_id][data['ol_len_outs'][i]:], kmers_config, supp_path): continue
+            s1, s2 = seq[:-data['ol_len_outs'][i]], n2s[out_n_id][data['ol_len_outs'][i]:]
+            if len(s1) < k or len(s2) < k: continue
+            if not check_connection_cov(s1, s2, kmers_config, supp_path): continue
             curr_out_neighbours.add((out_n_id, data['prefix_len_outs'][i], data['ol_len_outs'][i], data['ol_sim_outs'][i]))
 
         for i, in_n_id in enumerate(data['ins']):
             if in_n_id not in n2n_end: continue
-            if not check_connection_cov(n2s[in_n_id][:-data['ol_len_ins'][i]], seq[data['ol_len_ins'][i]:], kmers_config, supp_path): continue
+            s1, s2 = n2s[in_n_id][:-data['ol_len_ins'][i]], seq[data['ol_len_ins'][i]:]
+            if len(s1) < k or len(s2) < k: continue
+            if not check_connection_cov(s1, s2, kmers_config, supp_path): continue
             curr_in_neighbours.add((in_n_id, data['prefix_len_ins'][i], data['ol_len_ins'][i], data['ol_sim_ins'][i]))
 
         if not curr_out_neighbours or not curr_in_neighbours: continue
@@ -500,17 +505,22 @@ def add_ghosts(old_walks, paf_data, r2n, ec_r2s, ul_r2s, n2s, old_graph, walk_va
 def parse_paf_ghost(pair):
     read_id, data = pair
     curr_out_neighbours, curr_in_neighbours = set(), set()
+    k = KMERS_CONFIG['k']
 
     for i, out_read_id in enumerate(data['outs']):
         out_n_id = R2N[out_read_id[0]][0] if out_read_id[1] == '+' else R2N[out_read_id[0]][1]
         if out_n_id not in N2N_START: continue
-        if not check_connection_cov(data['seq'][:-data['ol_len_outs'][i]], N2S[out_n_id][data['ol_len_outs'][i]:], KMERS_CONFIG, SUPP_PATH): continue
+        s1, s2 = data['seq'][:-data['ol_len_outs'][i]], N2S[out_n_id][data['ol_len_outs'][i]:]
+        if len(s1) < k or len(s2) < k: continue
+        if not check_connection_cov(s1, s2, KMERS_CONFIG, SUPP_PATH): continue
         curr_out_neighbours.add((out_n_id, data['prefix_len_outs'][i], data['ol_len_outs'][i], data['ol_similarity_outs'][i]))
 
     for i, in_read_id in enumerate(data['ins']):
         in_n_id = R2N[in_read_id[0]][0] if in_read_id[1] == '+' else R2N[in_read_id[0]][1] 
         if in_n_id not in N2N_END: continue
-        if not check_connection_cov(N2S[in_n_id][:-data['ol_len_ins'][i]], data['seq'][data['ol_len_ins'][i]:], KMERS_CONFIG, SUPP_PATH): continue
+        s1, s2 = N2S[in_n_id][:-data['ol_len_ins'][i]], data['seq'][data['ol_len_ins'][i]:]
+        if len(s1) < k or len(s2) < k: continue
+        if not check_connection_cov(s1, s2, KMERS_CONFIG, SUPP_PATH): continue
         curr_in_neighbours.add((in_n_id, data['prefix_len_ins'][i], data['ol_len_ins'][i], data['ol_similarity_ins'][i]))
     
     return curr_out_neighbours, curr_in_neighbours, data['read_len']
