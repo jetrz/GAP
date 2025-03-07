@@ -328,8 +328,7 @@ def add_ghosts(old_walks, paf_data, r2n, ec_r2s, ul_r2s, n2s, old_graph, walk_va
     R2N, N2S, N2N_START, N2N_END, KMERS_CONFIG, SUPP_PATH = r2n, n2s, n2n_start, n2n_end, kmers_config, supp_path
 
     # Preprocess the sequences because pyfaidx doesn't play well with multiprocessing
-    print("Preprocessing sequences...")
-    for read_id in tqdm(ghost_data['+'].keys(), ncols=120):
+    for read_id in ghost_data['+'].keys():
         if read_id not in ec_r2s: raise ValueError("Use of UL reads currently not supported!")
         seq, rev_seq = ec_r2s[read_id]
         ghost_data['+'][read_id]['seq'] = seq
@@ -409,12 +408,12 @@ def add_ghosts(old_walks, paf_data, r2n, ec_r2s, ul_r2s, n2s, old_graph, walk_va
 
         for i, out_n_id in enumerate(data['outs']):
             if out_n_id not in n2n_start: continue
-            if not check_connection_cov(seq, n2s[out_n_id], kmers_config, supp_path): continue
+            if not check_connection_cov(seq[:-data['ol_len_outs'][i]], n2s[out_n_id][data['ol_len_outs'][i]:], kmers_config, supp_path): continue
             curr_out_neighbours.add((out_n_id, data['prefix_len_outs'][i], data['ol_len_outs'][i], data['ol_sim_outs'][i]))
 
         for i, in_n_id in enumerate(data['ins']):
             if in_n_id not in n2n_end: continue
-            if not check_connection_cov(n2s[in_n_id], seq, kmers_config, supp_path): continue
+            if not check_connection_cov(n2s[in_n_id][:-data['ol_len_ins'][i]], seq[data['ol_len_ins'][i]:], kmers_config, supp_path): continue
             curr_in_neighbours.add((in_n_id, data['prefix_len_ins'][i], data['ol_len_ins'][i], data['ol_sim_ins'][i]))
 
         if not curr_out_neighbours or not curr_in_neighbours: continue
@@ -505,18 +504,18 @@ def parse_paf_ghost(pair):
     for i, out_read_id in enumerate(data['outs']):
         out_n_id = R2N[out_read_id[0]][0] if out_read_id[1] == '+' else R2N[out_read_id[0]][1]
         if out_n_id not in N2N_START: continue
-        if not check_connection_cov(data['seq'], N2S[out_n_id], KMERS_CONFIG, SUPP_PATH): continue
+        if not check_connection_cov(data['seq'][:-data['ol_len_outs'][i]], N2S[out_n_id][data['ol_len_outs'][i]:], KMERS_CONFIG, SUPP_PATH): continue
         curr_out_neighbours.add((out_n_id, data['prefix_len_outs'][i], data['ol_len_outs'][i], data['ol_similarity_outs'][i]))
 
     for i, in_read_id in enumerate(data['ins']):
         in_n_id = R2N[in_read_id[0]][0] if in_read_id[1] == '+' else R2N[in_read_id[0]][1] 
         if in_n_id not in N2N_END: continue
-        if not check_connection_cov(N2S[in_n_id], data['seq'], KMERS_CONFIG, SUPP_PATH): continue
+        if not check_connection_cov(N2S[in_n_id][:-data['ol_len_ins'][i]], data['seq'][data['ol_len_ins'][i]:], KMERS_CONFIG, SUPP_PATH): continue
         curr_in_neighbours.add((in_n_id, data['prefix_len_ins'][i], data['ol_len_ins'][i], data['ol_similarity_ins'][i]))
     
     return curr_out_neighbours, curr_in_neighbours, data['read_len']
 
-def check_connection_cov(s1, s2, kmers_config, supp_path, s3=None):
+def check_connection_cov(s1, s2, kmers_config, supp_path):
     """
     Validates an edge based on relative coverage, calculated using k-mer frequency. 
     If the difference in coverage between two sequences is too great, the edge is rejected.
@@ -550,11 +549,7 @@ def check_connection_cov(s1, s2, kmers_config, supp_path, s3=None):
         return abs(a-b) <= diff*max(a,b)
     
     cov1, cov2 = get_avg_cov(s1), get_avg_cov(s2)
-    if s3 is not None:
-        cov3 = get_avg_cov(s3)
-        return check_diff(cov1, cov2) and check_diff(cov2, cov3) and check_diff(cov1, cov3)
-    else:
-        return check_diff(cov1, cov2)
+    return check_diff(cov1, cov2)
 
 def deduplicate(adj_list, old_walks):
     """
