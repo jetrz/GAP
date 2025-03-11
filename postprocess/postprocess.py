@@ -527,7 +527,7 @@ def parse_paf_ghost(pair):
     
     return read_id, curr_out_neighbours, curr_in_neighbours
 
-def check_connection_cov(s1, s2, kmers_config, supp_path):
+def check_connection_cov(s1, s2, kmers, kmers_config):
     """
     Validates an edge based on relative coverage, calculated using k-mer frequency. 
     If the difference in coverage between two sequences is too great, the edge is rejected.
@@ -535,22 +535,20 @@ def check_connection_cov(s1, s2, kmers_config, supp_path):
     k, diff, n = kmers_config['k'], kmers_config['diff'], kmers_config['n']
 
     def get_avg_cov(seq):
-        if len(seq) <= k+n:
-            kmer_list = [seq[i:i+k] for i in range(len(seq)-k+1)]
-        else:
-            # Only check x number of kmers. This is to reduce computational cost
-            starts = random.sample(range(len(seq)-k), n)
-            kmer_list = [seq[s:s+k] for s in starts]
-            
+        # if len(seq) <= k+n:
+        #     kmer_list = [seq[i:i+k] for i in range(len(seq)-k+1)]
+        # else:
+        #     # Only check x number of kmers. This is to reduce computational cost
+        #     starts = random.sample(range(len(seq)-k), n)
+        #     kmer_list = [seq[s:s+k] for s in starts]
+
+        kmer_list = [seq[i:i+k] for i in range(len(seq)-k+1)]
+
         total_cov = 0
-        batch_size = 1000
-        for i in range(0, len(kmer_list), batch_size):
-            batch = kmer_list[i:i+batch_size]
-            res = subprocess.run(["jellyfish", "query", f"{supp_path}{k}mers.jf"] + batch, capture_output=True, text=True)
-            counts = res.stdout.splitlines()
-            for l in counts:
-                total_cov += int(l.split()[1])
-        
+        for c_kmer in kmer_list:
+            if c_kmer not in kmers: c_kmer = str(Seq.Seq(c_kmer).reverse_complement())
+            total_cov += kmers.get(c_kmer, 0)
+            
         return total_cov/len(kmer_list)
 
     def check_diff(a, b):
@@ -781,7 +779,7 @@ def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, mem
 
     return res_walk, res_key_nodes, res_penalty, is_res_t2t
 
-def get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, n2s, kmers_config, supp_path, penalty=None, visited_init=None):
+def get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, n2s, kmers, kmers_config, penalty=None, visited_init=None):
     """
     Given a start node, greedily performs DFS by recursively choosing the edge with the highest probabilty score while also checking telomere compatibility.
     Note: dfs penalty is currently not being used, but leaving it here for possible future extension. the last value returned (0) by this function represents the penalty of the best walk.
@@ -849,7 +847,7 @@ def get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, n2s, 
 
             if c_node < n_old_walks: break
             assert walk[-2] < n_old_walks and highest_score.new_dst_nid < n_old_walks, "Non S -> G -> S sequence found!"
-            if check_connection_cov(s1, n2s[highest_score.old_dst_nid], kmers_config, supp_path): break
+            if check_connection_cov(s1, n2s[highest_score.old_dst_nid], kmers, kmers_config): break
 
         if no_neigh_found: break            
 
@@ -865,7 +863,7 @@ def get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, n2s, 
 
     return walk, n_key_nodes, 0, is_t2t
 
-def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, n2s, kmers_config, supp_path, e2s=None):
+def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, n2s, kmers, kmers_config, e2s=None):
     """
     Creates the new walks, priotising key nodes with telomeres.
 
@@ -917,12 +915,12 @@ def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, n2s, kmers_config, supp
                 if e2s is None:
                     curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
                 else:
-                    curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk_gnnome(temp_adj_list, walk_id, n_old_walks, telo_ref, e2s, n2s, kmers_config, supp_path)
+                    curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk_gnnome(temp_adj_list, walk_id, n_old_walks, telo_ref, e2s, n2s, kmers, kmers_config)
             else:
                 if e2s is None:
                     curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
                 else:
-                    curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk_gnnome(rev_adj_list, walk_id, n_old_walks, telo_ref, e2s, n2s, kmers_config, supp_path)
+                    curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk_gnnome(rev_adj_list, walk_id, n_old_walks, telo_ref, e2s, n2s, kmers, kmers_config)
                 curr_walk.reverse()
 
             if is_best_t2t and not is_curr_t2t: continue
@@ -953,12 +951,12 @@ def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, n2s, kmers_config, supp
             if e2s is None:
                 curr_walk, curr_key_nodes, curr_penalty, _ = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
             else:
-                curr_walk, curr_key_nodes, curr_penalty, _ = get_best_walk_gnnome(temp_adj_list, walk_id, n_old_walks, telo_ref, e2s, n2s, kmers_config, supp_path)
+                curr_walk, curr_key_nodes, curr_penalty, _ = get_best_walk_gnnome(temp_adj_list, walk_id, n_old_walks, telo_ref, e2s, n2s, kmers, kmers_config)
             visited_init = set(curr_walk[1:]) if len(curr_walk) > 1 else set()
             if e2s is None:
                 curr_walk_rev, curr_key_nodes_rev, curr_penalty_rev, _ = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty, visited_init=visited_init)
             else:
-                curr_walk_rev, curr_key_nodes_rev, curr_penalty_rev, _ = get_best_walk_gnnome(rev_adj_list, walk_id, n_old_walks, telo_ref, e2s, n2s, kmers_config, supp_path, visited_init=visited_init)
+                curr_walk_rev, curr_key_nodes_rev, curr_penalty_rev, _ = get_best_walk_gnnome(rev_adj_list, walk_id, n_old_walks, telo_ref, e2s, n2s, kmers, kmers_config, visited_init=visited_init)
             curr_walk_rev.reverse(); curr_walk_rev = curr_walk_rev[:-1]; curr_walk_rev.extend(curr_walk); curr_walk = curr_walk_rev
             curr_key_nodes += (curr_key_nodes_rev-1)
             curr_penalty += curr_penalty_rev
@@ -1047,6 +1045,21 @@ def get_contigs(old_walks, new_walks, adj_list, n2s, n2s_ghost, g):
 
     return contigs
 
+def parse_kmer(read):
+    return str(read.seq), int(read.id)
+
+def parse_kmer_fasta(path):
+    print("Parsing kmer fasta...")
+    data = {}
+    with open(path, 'rt') as f:
+        rows = SeqIO.parse(f, 'fasta')
+        with Pool(40) as pool:
+            results = pool.imap_unordered(parse_kmer, rows, chunksize=50)
+            for kmer, freq in tqdm(results, ncols=120):
+                data[kmer] = freq
+
+    return data
+
 def postprocess(name, hyperparams, paths, aux, gnnome_config):
     """
     (\(\        \|/        /)/)
@@ -1104,10 +1117,10 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
 
     print(f"Generating new walks... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     if hyperparams['decoding'] == 'gnnome_score':
-        new_walks = get_walks(walk_ids, adj_list, telo_ref, hyperparams['dfs_penalty'], n2s, hyperparams['kmers'], paths['graph'], e2s=e2s)
+        new_walks = get_walks(walk_ids, adj_list, telo_ref, hyperparams['dfs_penalty'], n2s, aux['kmers'], hyperparams['kmers'], e2s=e2s)
     else:
         if hyperparams['decoding'] != 'default': print("Unrecognised decoding hyperparam. Running default...")
-        new_walks = get_walks(walk_ids, adj_list, telo_ref, hyperparams['dfs_penalty'], n2s, hyperparams['kmers'], paths['graph'])
+        new_walks = get_walks(walk_ids, adj_list, telo_ref, hyperparams['dfs_penalty'], n2s, aux['kmers'], hyperparams['kmers'])
 
     print(f"Generating contigs... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     contigs = get_contigs(walks, new_walks, adj_list, n2s, n2s_ghost, old_graph)
@@ -1143,6 +1156,8 @@ def run_postprocessing(config):
             aux['paf_data'] = pickle.load(f)
         with open(paths['hifiasm']+"r2s.pkl", 'rb') as f:
             aux['r2s'] = pickle.load(f)
+        with open(paths['hifiasm']+f"{postprocessing_config['kmers']['k']}mers.pkl", 'rb') as f:
+            aux['kmers'] = pickle.load(f)
         aux['old_graph'] = dgl.load_graphs(paths['graph']+f'{genome}.dgl')[0][0]
         aux['ul_r2s'] = Fasta(paths['ul_reads']) if paths['ul_reads'] else None
 

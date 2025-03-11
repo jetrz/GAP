@@ -33,9 +33,24 @@ def parse_fasta(path):
     data = {}
     with open_func(path, 'rt') as handle:
         rows = SeqIO.parse(handle, filetype)
-        with Pool(15) as pool:
+        with Pool(40) as pool:
             results = pool.imap_unordered(parse_read, rows, chunksize=50)
             for id, seqs in tqdm(results, ncols=120):
                 data[id] = seqs
+
+    return data
+
+def parse_kmer(read):
+    return str(read.seq), int(read.id)
+
+def parse_kmer_fasta(path):
+    print("Parsing kmer fasta...")
+    data = {}
+    with open(path, 'rt') as f:
+        rows = SeqIO.parse(f, 'fasta')
+        with Pool(40) as pool:
+            results = pool.imap_unordered(parse_kmer, rows, chunksize=50)
+            for kmer, freq in tqdm(results, ncols=120):
+                data[kmer] = freq
 
     return data

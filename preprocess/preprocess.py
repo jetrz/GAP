@@ -3,6 +3,7 @@ import dgl, gc, pickle, subprocess, torch
 from pyfaidx import Fasta
 
 from misc.utils import pyg_to_dgl, timedelta_to_str
+from .fasta_util import parse_kmer_fasta
 from .gfa_util import preprocess_gfa
 from .paf_util import parse_paf
 
@@ -45,7 +46,12 @@ def run_preprocessing(config):
         print(f"Generating k-mer counts using Jellyfish... (Time: {timedelta_to_str(datetime.now() - time_start)})")
         k = config['misc']['kmers']['k']
         command = f"jellyfish count -m {k} -s 100M -t 10 -o {k}mers.jf -C {config['genome_info'][genome]['paths']['ec_reads']}"
-        subprocess.run(command, shell=True, cwd=config['genome_info'][genome]['paths']['graph'])
+        subprocess.run(command, shell=True, cwd=config['genome_info'][genome]['paths']['hifiasm'])
+        command = f"jellyfish dump {k}mers.jf > {k}mers.fa"
+        subprocess.run(command, shell=True, cwd=config['genome_info'][genome]['paths']['hifiasm'])
+        kmers = parse_kmer_fasta(config['genome_info'][genome]['paths']['hifiasm']+f"{k}mers.fa")
+        with open(config['genome_info'][genome]['paths']['hifiasm']+f"{k}mers.pkl", "wb") as p:
+            pickle.dump(kmers, p)
 
         print(f"Run finished! (Time: {timedelta_to_str(datetime.now() - time_start)})")
 
