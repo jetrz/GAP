@@ -860,10 +860,11 @@ def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, kme
         # performs 1-hop lookahead
         best_diff, best_g_neigh, best_s_neigh = float('inf'), None, None
         for g in ghost_neighs:
+            if g.new_dst_nid in visited: continue
             seq_neighs = adj_list.get_neighbours(g.new_dst_nid) # get all neighbours of n, which is a ghost
-            assert len(seq_neighs) > 0, "Current ghost node has no neighbours. Please report this bug, thanks!"
             s1 = n2s[g.old_src_nid]
             for s in seq_neighs:
+                if s.new_dst_nid in visited: continue
                 curr_telo = get_telo_info(s.new_dst_nid)
                 if check_telo_compatibility(walk_telo, curr_telo) < 0: continue
                 diff, cov_check = check_connection_cov(s1, n2s[s.old_dst_nid], kmers, kmers_config)
