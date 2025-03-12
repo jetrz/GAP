@@ -1,5 +1,5 @@
 from datetime import datetime
-import dgl, gc, pickle, subprocess, torch
+import dgl, gc, os, pickle, subprocess, torch
 from pyfaidx import Fasta
 
 from misc.utils import pyg_to_dgl, timedelta_to_str
@@ -45,13 +45,18 @@ def run_preprocessing(config):
 
         print(f"Generating k-mer counts using Jellyfish... (Time: {timedelta_to_str(datetime.now() - time_start)})")
         k = config['misc']['kmers']['k']
-        command = f"jellyfish count -m {k} -s 100M -t 10 -o {k}mers.jf -C {config['genome_info'][genome]['paths']['ec_reads']}"
-        subprocess.run(command, shell=True, cwd=config['genome_info'][genome]['paths']['hifiasm'])
-        command = f"jellyfish dump {k}mers.jf > {k}mers.fa"
-        subprocess.run(command, shell=True, cwd=config['genome_info'][genome]['paths']['hifiasm'])
-        kmers = parse_kmer_fasta(config['genome_info'][genome]['paths']['hifiasm']+f"{k}mers.fa")
-        with open(config['genome_info'][genome]['paths']['hifiasm']+f"{k}mers.pkl", "wb") as p:
-            pickle.dump(kmers, p)
+        hifiasm_path = config['genome_info'][genome]['paths']['hifiasm']
+        if os.path.isfile(hifiasm_path+f"{k}mers.jf"):
+            print("Jellyfish has already been generated!")
+        else:
+            command = f"jellyfish count -m {k} -s 100M -t 10 -o {k}mers.jf -C {config['genome_info'][genome]['paths']['ec_reads']}"
+            subprocess.run(command, shell=True, cwd=hifiasm_path)
+            command = f"jellyfish dump {k}mers.jf > {k}mers.fa"
+            subprocess.run(command, shell=True, cwd=hifiasm_path)
+            kmers = parse_kmer_fasta(hifiasm_path+f"{k}mers.fa")
+            with open(hifiasm_path+f"{k}mers.pkl", "wb") as p:
+                pickle.dump(kmers, p)
+            os.remove(hifiasm_path+f"{k}mers.fa")
 
         print(f"Run finished! (Time: {timedelta_to_str(datetime.now() - time_start)})")
 

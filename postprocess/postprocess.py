@@ -4,6 +4,7 @@ from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
 from pyfaidx import Fasta
+from tqdm import tqdm
 
 from generate_baseline.gnnome_decoding import preprocess_graph
 from generate_baseline.SymGatedGCN import SymGatedGCNModel
@@ -321,7 +322,8 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, walk_
     ghost_data = ghost_data['hop_1'] # WE ONLY DO FOR 1-HOP FOR NOW
     added_nodes_count = 0
     for orient in ['+', '-']:
-        for read_id, data in ghost_data[orient].items():
+        print("Orient:", orient)
+        for read_id, data in tqdm(ghost_data[orient].items(), ncols=120):
             curr_out_neighbours, curr_in_neighbours = set(), set()
 
             for i, out_read_id in enumerate(data['outs']):
@@ -369,10 +371,9 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, walk_
             else:
                 _, seq = get_seqs(read_id, hifi_r2s, ul_r2s)
             n2s_ghost[n_id] = seq
-            n_id += 1
             ngrl.append(data['read_len'])
-            dgl_nid += 1
-            added_nodes_count += 1
+            n_id += 1; dgl_nid += 1; added_nodes_count += 1
+
     print("Number of nodes added from PAF:", added_nodes_count)
 
     print(f"Adding nodes from old graph...")
@@ -867,6 +868,7 @@ def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s=None, n2s=None, kme
         
     # Generate walks for walks with telomeric regions first
     while telo_walk_ids:
+        print(f"Number of telo walk ids left: {len(telo_walk_ids)}", end='\r')
         best_walk, best_key_nodes, best_penalty, is_best_t2t = [], 0, 0, False
         for walk_id in telo_walk_ids: # the node_id is also the index        
             if telo_ref[walk_id]['start']:
@@ -903,6 +905,7 @@ def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s=None, n2s=None, kme
 
     # Generate walks for the rest
     while non_telo_walk_ids:
+        print(f"Number of non telo walk ids left: {len(non_telo_walk_ids)}", end='\r')
         best_walk, best_key_nodes, best_penalty = [], 0, 0
         for walk_id in non_telo_walk_ids: # the node_id is also the index
             if e2s is None:
@@ -1100,7 +1103,7 @@ def run_postprocessing(config):
         aux['hifi_r2s'] = Fasta(paths['ec_reads'])
         aux['ul_r2s'] = Fasta(paths['ul_reads']) if paths['ul_reads'] else None
 
-        postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
-        # for w in [0.025, 0.02, 0.015, 0.01]:
-        #     postprocessing_config['walk_valid_p'] = w
-        #     postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
+        # postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
+        for diff in [0.5, 0.75, 1]:
+            postprocessing_config['kmers']['diff'] = diff
+            postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
