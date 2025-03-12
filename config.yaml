@@ -47,14 +47,14 @@ run:
 postprocessing:
   walk_valid_p: 0.01
   use_telomere_info : true
-  dfs_penalty: null # None, ol_len or ol_sim
-  decoding: 'gnnome_score' # 'default' or 'gnnome_score'
+  dfs_penalty: null # None, 'ol_len' or 'ol_sim'
+  decoding: 'gnnome_score' # 'default' or 'gnnome_score' or 'coverage'
 
 misc:
   kmers:
     k: 21
-    diff: 1 # range between 0 to 1 where 0 removes all edges, while 1 removes none
-    n: 999
+    diff: 1 # range between 0 to 1 where 0 removes all edges, while 1 removes none. diff threshold calculated by abs(cov1-cov2) <= diff*max(cov1,cov2)
+    n: 1 # % of kmers to check per read. 0 checks no kmers, while 1 checks all kmers
   paths:
     model: '/home/stumanuel/GAP/misc/default_best.pt'
     seqtk: '/home/stumanuel/GitHub/seqtk/seqtk'

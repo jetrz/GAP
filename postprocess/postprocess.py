@@ -573,7 +573,9 @@ def check_connection_cov(s1, s2, kmers, kmers_config):
     k, diff, n = kmers_config['k'], kmers_config['diff'], kmers_config['n']
 
     def get_avg_cov(seq):
-        kmer_list = [seq[i:i+k] for i in range(len(seq)-k+1)]
+        n_windows = int((len(seq)-k+1)*n)
+        starts = random.sample(range(len(seq)-k+1), n_windows)
+        kmer_list = [seq[i:i+k] for i in starts]
 
         total_cov = 0
         for c_kmer in kmer_list:
