@@ -581,14 +581,12 @@ def check_connection_cov(s1, s2, kmers, kmers_config):
             total_cov += kmers[c_kmer]
             
         return total_cov/len(kmer_list)
-
-    def check_diff(a, b):
-        return abs(a-b) <= diff*max(a,b)
     
     cov1, cov2 = get_avg_cov(s1), get_avg_cov(s2)
-    return check_diff(cov1, cov2)
+    cov_diff = abs(cov1-cov2)
+    return cov_diff, cov_diff <= diff*max(cov1,cov2)
 
-def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, memo_chances=10000, visited_init=None):
+def get_best_walk_default(adj_list, start_node, n_old_walks, telo_ref, penalty=None, memo_chances=10000, visited_init=None):
     """
     Given a start node, run the greedy DFS to retrieve the walk with the most key nodes.
 
@@ -741,8 +739,8 @@ def get_best_walk(adj_list, start_node, n_old_walks, telo_ref, penalty=None, mem
 
 def get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, n2s, kmers, kmers_config, penalty=None, visited_init=None):
     """
-    Given a start node, greedily performs DFS by recursively choosing the edge with the highest probabilty score while also checking telomere compatibility.
-    Note: dfs penalty is currently not being used, but leaving it here for possible future extension. the last value returned (0) by this function represents the penalty of the best walk.
+    Given a start node, recursively and greedily chooses the edge with the highest probabilty score while also checking telomere compatibility.
+    Note: dfs penalty is currently not being used, but leaving it here for possible future extension. the 0 returned by this function represents the penalty of the best walk.
     """
 
     def get_telo_info(node):
@@ -807,7 +805,8 @@ def get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, n2s, 
 
             if c_node < n_old_walks: break
             assert walk[-2] < n_old_walks and highest_score.new_dst_nid < n_old_walks, "Non S -> G -> S sequence found!"
-            if check_connection_cov(s1, n2s[highest_score.old_dst_nid], kmers, kmers_config): break
+            _, cov_check = check_connection_cov(s1, n2s[highest_score.old_dst_nid], kmers, kmers_config)
+            if cov_check: break
 
         if no_neigh_found: break            
 
@@ -823,7 +822,71 @@ def get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, n2s, 
 
     return walk, n_key_nodes, 0, is_t2t
 
-def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s=None, n2s=None, kmers=None, kmers_config=None):
+def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, kmers, kmers_config, penalty=None, visited_init=None):
+    """
+    Given a start node, recursively and greedily chooses the next sequence node (performs 1 step lookahead to skip over the ghost) which has the lowest coverage difference.
+    Note: dfs penalty is currently not being used, but leaving it here for possible future extension. the 0 returned by this function represents the penalty of the best walk.
+    """
+    def get_telo_info(node):
+        if node >= n_old_walks: return None
+
+        if telo_ref[node]['start']:
+            return ('start', telo_ref[node]['start'])
+        elif telo_ref[node]['end']:
+            return ('end', telo_ref[node]['end'])
+        else:
+            return None
+
+    def check_telo_compatibility(t1, t2):
+        if t2 is None:
+            return 0
+        elif t1 is None and t2 is not None:
+            return 1
+        elif t1[0] != t2[0] and t1[1] != t2[1]: # The position and motif var must be different.
+            return 1
+        else:
+            return -1
+        
+    if visited_init is None: visited_init = set()
+    walk, n_key_nodes, visited = [start_node], 1, visited_init
+    visited.add(start_node)
+    c_node = start_node
+    walk_telo = get_telo_info(start_node)
+
+    while True:
+        assert c_node < n_old_walks, "Current node is not a sequence node. Please report this bug, thanks!"
+        ghost_neighs = adj_list.get_neighbours(c_node)
+        
+        # performs 1-hop lookahead
+        best_diff, best_g_neigh, best_s_neigh = float('inf'), None, None
+        for g in ghost_neighs:
+            seq_neighs = adj_list.get_neighbours(g.new_dst_nid) # get all neighbours of n, which is a ghost
+            assert len(seq_neighs) > 0, "Current ghost node has no neighbours. Please report this bug, thanks!"
+            s1 = n2s[g.old_src_nid]
+            for s in seq_neighs:
+                curr_telo = get_telo_info(s.new_dst_nid)
+                if check_telo_compatibility(walk_telo, curr_telo) < 0: continue
+                diff, cov_check = check_connection_cov(s1, n2s[s.old_dst_nid], kmers, kmers_config)
+                if not cov_check: continue
+                if diff < best_diff:
+                    best_diff = diff
+                    best_g_neigh = g.new_dst_nid
+                    best_s_neigh = s.new_dst_nid
+
+        if best_g_neigh is None: break
+        walk.append(best_g_neigh); walk.append(best_s_neigh)
+        visited.add(best_g_neigh); visited.add(best_s_neigh)
+        n_key_nodes += 1
+        c_node = best_s_neigh
+
+        curr_telo = get_telo_info(best_s_neigh)
+        if check_telo_compatibility(walk_telo, curr_telo) > 0: break
+
+    is_t2t = walk_telo and walk[-1] < n_old_walks and ((telo_ref[walk[-1]]['start'] and telo_ref[walk[-1]]['start'] != walk_telo[1]) or (telo_ref[walk[-1]]['end'] and telo_ref[walk[-1]]['end'] != walk_telo[1]))
+
+    return walk, n_key_nodes, 0, is_t2t
+
+def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s, n2s, kmers, kmers_config, decoding='default'):
     """
     Creates the new walks, priotising key nodes with telomeres.
 
@@ -833,10 +896,19 @@ def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s=None, n2s=None, kme
     3. We then repeat the above step for all key nodes without telomere information that are still unused.
     """ 
 
+    n_old_walks = len(walk_ids)
+    def get_best_walk(adj_list, start_node, visited_init=None):
+        if decoding == 'gnnome_score':
+            return get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, n2s, kmers, kmers_config, visited_init=visited_init)
+        elif decoding == 'coverage':
+            return get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, kmers, kmers_config, visited_init=visited_init)
+        else:
+            return get_best_walk_default(adj_list, start_node, n_old_walks, telo_ref, dfs_penalty, visited_init=visited_init)
+
+
     # Generating new walks using greedy DFS
     new_walks = []
     temp_walk_ids, temp_adj_list = deepcopy(walk_ids), deepcopy(adj_list)
-    n_old_walks = len(temp_walk_ids)
     rev_adj_list = AdjList()
     for edges in temp_adj_list.adj_list.values():
         for e in edges:
@@ -872,15 +944,9 @@ def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s=None, n2s=None, kme
         best_walk, best_key_nodes, best_penalty, is_best_t2t = [], 0, 0, False
         for walk_id in telo_walk_ids: # the node_id is also the index        
             if telo_ref[walk_id]['start']:
-                if e2s is None:
-                    curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
-                else:
-                    curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk_gnnome(temp_adj_list, walk_id, n_old_walks, telo_ref, e2s, n2s, kmers, kmers_config)
+                curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk(temp_adj_list, walk_id)
             else:
-                if e2s is None:
-                    curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
-                else:
-                    curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk_gnnome(rev_adj_list, walk_id, n_old_walks, telo_ref, e2s, n2s, kmers, kmers_config)
+                curr_walk, curr_key_nodes, curr_penalty, is_curr_t2t = get_best_walk(rev_adj_list, walk_id)
                 curr_walk.reverse()
 
             if is_best_t2t and not is_curr_t2t: continue
@@ -908,15 +974,9 @@ def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s=None, n2s=None, kme
         print(f"Number of non telo walk ids left: {len(non_telo_walk_ids)}", end='\r')
         best_walk, best_key_nodes, best_penalty = [], 0, 0
         for walk_id in non_telo_walk_ids: # the node_id is also the index
-            if e2s is None:
-                curr_walk, curr_key_nodes, curr_penalty, _ = get_best_walk(temp_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty)
-            else:
-                curr_walk, curr_key_nodes, curr_penalty, _ = get_best_walk_gnnome(temp_adj_list, walk_id, n_old_walks, telo_ref, e2s, n2s, kmers, kmers_config)
+            curr_walk, curr_key_nodes, curr_penalty, _ = get_best_walk(temp_adj_list, walk_id)
             visited_init = set(curr_walk[1:]) if len(curr_walk) > 1 else set()
-            if e2s is None:
-                curr_walk_rev, curr_key_nodes_rev, curr_penalty_rev, _ = get_best_walk(rev_adj_list, walk_id, n_old_walks, telo_ref, dfs_penalty, visited_init=visited_init)
-            else:
-                curr_walk_rev, curr_key_nodes_rev, curr_penalty_rev, _ = get_best_walk_gnnome(rev_adj_list, walk_id, n_old_walks, telo_ref, e2s, n2s, kmers, kmers_config, visited_init=visited_init)
+            curr_walk_rev, curr_key_nodes_rev, curr_penalty_rev, _ = get_best_walk(rev_adj_list, walk_id, visited_init=visited_init)
             curr_walk_rev.reverse(); curr_walk_rev = curr_walk_rev[:-1]; curr_walk_rev.extend(curr_walk); curr_walk = curr_walk_rev
             curr_key_nodes += (curr_key_nodes_rev-1)
             curr_penalty += curr_penalty_rev
@@ -1059,11 +1119,21 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
     adj_list = deduplicate(adj_list, walks)
 
     print(f"Generating new walks... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-    if hyperparams['decoding'] == 'gnnome_score':
-        new_walks = get_walks(walk_ids, adj_list, telo_ref, hyperparams['dfs_penalty'], e2s=e2s, n2s=n2s, kmers=aux['kmers'], kmers_config=hyperparams['kmers'])
-    else:
-        if hyperparams['decoding'] != 'default': print("Unrecognised decoding hyperparam. Running default...")
-        new_walks = get_walks(walk_ids, adj_list, telo_ref, hyperparams['dfs_penalty'])
+    decoding = hyperparams['decoding']
+    if decoding not in ['default', 'gnnome_score', 'coverage']:
+        print("Unrecognised decoding hyperparam. Using default...")
+        decoding = 'default'
+    new_walks = get_walks(
+        walk_ids=walk_ids,
+        adj_list=adj_list,
+        telo_ref=telo_ref,
+        dfs_penalty=hyperparams['dfs_penalty'],
+        e2s=e2s,
+        n2s=n2s,
+        kmers=aux['kmers'],
+        kmers_config=hyperparams['kmers'],
+        decoding=decoding
+    )
 
     print(f"Generating contigs... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     contigs = get_contigs(walks, new_walks, adj_list, n2s, n2s_ghost, old_graph)

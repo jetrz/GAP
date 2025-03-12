@@ -53,7 +53,7 @@ postprocessing:
 misc:
   kmers:
     k: 21
-    diff: 1
+    diff: 1 # range between 0 to 1 where 0 removes all edges, while 1 removes none
     n: 999
   paths:
     model: '/home/stumanuel/GAP/misc/default_best.pt'
