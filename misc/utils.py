@@ -1,9 +1,12 @@
 import dgl, glob, os, random, subprocess, torch
 from Bio import SeqIO
+from collections import Counter
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import networkx as nx
+import numpy as np
 import pickle
+from scipy.signal import argrelextrema
 
 def timedelta_to_str(delta):
     hours, remainder = divmod(delta.seconds, 3600)
@@ -195,6 +198,50 @@ def analyse_graph(adj_list, telo_ref, walks, save_path):
     legend_handles = [mpatches.Patch(color=color_map[key], label=labels[key]) for key in sorted(color_map)]
     plt.legend(handles=legend_handles, loc='best')
     plt.savefig(save_path+'nx_graph_after.png')
+
+    return
+
+def filter_out_kmers(d, save_path_wo_ext):
+    """
+    Filters out kmers by frequency and saves the new pickle.
+    Lower threshold is the first local minima from the left, upper threshold is the first local minima after the average.
+    Method from the paper "Constructing telomere-to-telomere diploid genome by polishing haploid nanopore-based assembly"
+    """
+    kmer_freqs = list(d.values())
+    cutoff = np.percentile(kmer_freqs, 99.5)
+    kmer_freqs = [i for i in kmer_freqs if i <= cutoff]
+
+    average = np.mean(kmer_freqs)
+    unique_kmer_freqs = np.array(list(set(kmer_freqs)))
+    nearest_average = unique_kmer_freqs[(np.abs(unique_kmer_freqs - average)).argmin()]
+
+    freqs = Counter(kmer_freqs)
+    max_freq = np.max(unique_kmer_freqs)
+    values = np.array([freqs.get(i,0) for i in range(1, max_freq+1)])
+    minima_inds = argrelextrema(values, np.less)[0]
+
+    lower, upper = minima_inds[0]+1, None
+    for m in minima_inds:
+        if m > nearest_average-1:
+            upper = m
+            break
+    if upper is None: upper = len(values)
+
+    filtered_d = {k:v for k,v in d.items() if lower <= v <= upper}
+    with open(save_path_wo_ext+".pkl", "wb") as p:
+        pickle.dump(filtered_d, p)
+
+    plt.figure(figsize=(10, 5))
+    x_indices = range(1, len(values) + 1)
+    plt.plot(x_indices, values)
+    plt.axvline(x=lower, color='r', linestyle='--', label=f'Lower Bound at {lower}')
+    plt.axvline(x=nearest_average, color='g', linestyle='--', label=f'Average at {nearest_average}')
+    plt.axvline(x=upper, color='b', linestyle='--', label=f'Upper Bound at {upper}')
+
+    plt.xlabel('Kmer Frequency')
+    plt.ylabel('# Kmers')
+    plt.savefig(save_path_wo_ext+".png")
+    plt.clf()
 
     return
 

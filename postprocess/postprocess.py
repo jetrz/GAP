@@ -66,7 +66,7 @@ class AdjList():
             text += "\n"
         return text
 
-def chop_walks_seqtk(old_walks, n2s, graph, rep1, rep2, seqtk_path):
+def chop_walks_seqtk(old_walks, n2s, graph, edges_full, rep1, rep2, seqtk_path):
     """
     Generates telomere information, then chops the walks. 
     1. I regenerate the contigs from the walk nodes. I'm not sure why but when regenerating it this way it differs slightly from the assembly fasta, so i'm doing it this way just to be safe.
@@ -76,13 +76,6 @@ def chop_walks_seqtk(old_walks, n2s, graph, rep1, rep2, seqtk_path):
         b. If there is an opposite telomere in the current walk, the telomere is added to the walk and then chopped.
         c. If there is an identical telomere in the current walk, the walk is chopped and a new walk begins with the found telomere.
     """
-
-    # Create a list of all edges
-    edges_full = {}  ## I dont know why this is necessary. but when cut transitives some edges are wrong otherwise. (This comment is from Martin's script)
-    for idx, (src, dst) in enumerate(zip(graph.edges()[0], graph.edges()[1])):
-        src, dst = src.item(), dst.item()
-        edges_full[(src, dst)] = idx
-
     # Regenerate old contigs
     old_contigs, pos_to_node = [], defaultdict(dict)
     for walk_id, walk in enumerate(old_walks):
@@ -220,7 +213,7 @@ def chop_walks_seqtk(old_walks, n2s, graph, rep1, rep2, seqtk_path):
 
     return new_walks, telo_ref
 
-def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, walk_valid_p, gnnome_config, model_path):
+def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, edges_full, walk_valid_p, gnnome_config, model_path):
     """
     Adds nodes and edges from the PAF and graph.
 
@@ -256,12 +249,6 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, walk_
         n_id += 1
 
     print("Recreating new graph...")
-    # Create a list of all edges
-    edges_full = {}  ## I dont know why this is necessary. but when cut transitives some edges are wrong otherwise. (This comment is from Martin's script)
-    for idx, (src, dst) in enumerate(zip(old_graph.edges()[0], old_graph.edges()[1])):
-        src, dst = src.item(), dst.item()
-        edges_full[(src, dst)] = idx
-
     new_graph = dgl.DGLGraph()
     new_old_nids = {}
     ngrl = [] # new graph read length
@@ -577,12 +564,18 @@ def check_connection_cov(s1, s2, kmers, kmers_config):
         starts = random.sample(range(len(seq)-k+1), n_windows)
         kmer_list = [seq[i:i+k] for i in starts]
 
-        total_cov = 0
+        total_cov, missed = 0, 0
         for c_kmer in kmer_list:
             if c_kmer not in kmers: c_kmer = str(Seq.Seq(c_kmer).reverse_complement())
-            total_cov += kmers[c_kmer]
+            if c_kmer not in kmers: # if it is still not in kmers, that means it was filtered out due to missing solid threshold
+                missed += 1
+            else:
+                total_cov += kmers[c_kmer]
             
-        return total_cov/len(kmer_list)
+        if missed == len(kmer_list): # the sequence only contained invalid kmers
+            return -1
+        else:
+            return total_cov/(len(kmer_list)-missed)
     
     cov1, cov2 = get_avg_cov(s1), get_avg_cov(s2)
     cov_diff = abs(cov1-cov2)
@@ -824,7 +817,7 @@ def get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, n2s, 
 
     return walk, n_key_nodes, 0, is_t2t
 
-def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, kmers, kmers_config, penalty=None, visited_init=None):
+def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, kmers, kmers_config, graph, old_walks, edges_full, penalty=None, visited_init=None):
     """
     Given a start node, recursively and greedily chooses the next sequence node (performs 1 step lookahead to skip over the ghost) which has the lowest coverage difference.
     Note: dfs penalty is currently not being used, but leaving it here for possible future extension. the 0 returned by this function represents the penalty of the best walk.
@@ -848,6 +841,22 @@ def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, kme
             return 1
         else:
             return -1
+
+    def get_surrounding_seq(walk_id, old_node_id):
+        seq = n2s[old_node_id]
+
+        # old_walk = old_walks[walk_id]
+        # ind = old_walk.index(old_node_id)
+        # if ind > 0:
+        #     prev_node_id = old_walk[ind-1]
+        #     prefix_len = graph.edata['prefix_length'][edges_full[(prev_node_id, old_node_id)]]
+        #     seq = n2s[prev_node_id][:prefix_len] + seq
+        # if ind+1 < len(old_walk):
+        #     next_node_id = old_walk[ind+1]
+        #     prefix_len = graph.edata['prefix_length'][edges_full[(old_node_id, next_node_id)]]
+        #     seq = seq[:prefix_len] + n2s[next_node_id]
+
+        return seq
         
     if visited_init is None: visited_init = set()
     walk, n_key_nodes, visited = [start_node], 1, visited_init
@@ -864,12 +873,13 @@ def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, kme
         for g in ghost_neighs:
             if g.new_dst_nid in visited: continue
             seq_neighs = adj_list.get_neighbours(g.new_dst_nid) # get all neighbours of n, which is a ghost
-            s1 = n2s[g.old_src_nid]
+            s1 = get_surrounding_seq(g.new_src_nid, g.old_src_nid)
             for s in seq_neighs:
                 if s.new_dst_nid in visited: continue
                 curr_telo = get_telo_info(s.new_dst_nid)
                 if check_telo_compatibility(walk_telo, curr_telo) < 0: continue
-                diff, cov_check = check_connection_cov(s1, n2s[s.old_dst_nid], kmers, kmers_config)
+                s2 = get_surrounding_seq(s.new_dst_nid, s.old_dst_nid)
+                diff, cov_check = check_connection_cov(s1, s2, kmers, kmers_config)
                 if not cov_check: continue
                 if diff < best_diff:
                     best_diff = diff
@@ -889,7 +899,7 @@ def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, kme
 
     return walk, n_key_nodes, 0, is_t2t
 
-def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s, n2s, kmers, kmers_config, decoding='default'):
+def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s, n2s, kmers, kmers_config, old_graph, old_walks, edges_full, decoding='default'):
     """
     Creates the new walks, priotising key nodes with telomeres.
 
@@ -904,7 +914,7 @@ def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s, n2s, kmers, kmers_
         if decoding == 'gnnome_score':
             return get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, n2s, kmers, kmers_config, visited_init=visited_init)
         elif decoding == 'coverage':
-            return get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, kmers, kmers_config, visited_init=visited_init)
+            return get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, kmers, kmers_config, old_graph, old_walks, edges_full, visited_init=visited_init)
         else:
             return get_best_walk_default(adj_list, start_node, n_old_walks, telo_ref, dfs_penalty, visited_init=visited_init)
 
@@ -998,7 +1008,7 @@ def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s, n2s, kmers, kmers_
     print(f"New walks generated! n new walks: {len(new_walks)}")
     return new_walks
 
-def get_contigs(old_walks, new_walks, adj_list, n2s, n2s_ghost, g):
+def get_contigs(old_walks, new_walks, adj_list, n2s, n2s_ghost, g, edges_full):
     """
     Recreates the contigs given the new walks. 
     
@@ -1007,13 +1017,6 @@ def get_contigs(old_walks, new_walks, adj_list, n2s, n2s_ghost, g):
     """
 
     n_old_walks = len(old_walks)
-
-    # Create a list of all edges
-    edges_full = {}  # I dont know why this is necessary. but when cut transitives some edges are wrong otherwise. (This is from Martin's script)
-    for idx, (src, dst) in enumerate(zip(g.edges()[0], g.edges()[1])):
-        src, dst = src.item(), dst.item()
-        edges_full[(src, dst)] = idx
-
     walk_nodes, walk_seqs, walk_prefix_lens = [], [], []
     for i, walk in enumerate(new_walks):
         c_nodes, c_seqs, c_prefix_lens = [], [], []
@@ -1091,11 +1094,16 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
         hyperparams_str += f"{k}: {v}, "
     print(hyperparams_str[:-2]+"\n")
     walks, n2s, r2n, paf_data, old_graph, hifi_r2s, ul_r2s = aux['walks'], aux['n2s'], aux['r2n'], aux['paf_data'], aux['old_graph'], aux['hifi_r2s'], aux['ul_r2s']
+    # Create a list of all edges
+    edges_full = {}  # I dont know why this is necessary. but when cut transitives some edges are wrong otherwise. (This is from Martin's script)
+    for idx, (src, dst) in enumerate(zip(old_graph.edges()[0], old_graph.edges()[1])):
+        src, dst = src.item(), dst.item()
+        edges_full[(src, dst)] = idx
 
     print(f"Chopping old walks... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     if hyperparams['use_telomere_info']:
         rep1, rep2 = hyperparams['telo_motif'][0], hyperparams['telo_motif'][1]
-        walks, telo_ref = chop_walks_seqtk(walks, n2s, old_graph, rep1, rep2, paths['seqtk'])
+        walks, telo_ref = chop_walks_seqtk(walks, n2s, old_graph, edges_full, rep1, rep2, paths['seqtk'])
     else:
         telo_ref = { i:{'start':None, 'end':None} for i in range(len(walks)) }
 
@@ -1108,6 +1116,7 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
         ul_r2s=ul_r2s,
         n2s=n2s,
         old_graph=old_graph,
+        edges_full=edges_full,
         walk_valid_p=hyperparams['walk_valid_p'],
         gnnome_config=gnnome_config,
         model_path=paths['model']
@@ -1135,11 +1144,14 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
         n2s=n2s,
         kmers=aux['kmers'],
         kmers_config=hyperparams['kmers'],
+        old_graph=old_graph,
+        old_walks=walks,
+        edges_full=edges_full,
         decoding=decoding
     )
 
     print(f"Generating contigs... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-    contigs = get_contigs(walks, new_walks, adj_list, n2s, n2s_ghost, old_graph)
+    contigs = get_contigs(walks, new_walks, adj_list, n2s, n2s_ghost, old_graph, edges_full)
 
     print(f"Calculating assembly metrics... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     analyse_graph(adj_list, telo_ref, new_walks, paths['save'])
@@ -1170,8 +1182,9 @@ def run_postprocessing(config):
             aux['r2n'] = pickle.load(f)
         with open(paths['paf_processed'], 'rb') as f:
             aux['paf_data'] = pickle.load(f)
-        with open(paths['hifiasm']+f"{postprocessing_config['kmers']['k']}mers.pkl", 'rb') as f:
+        with open(paths['hifiasm']+f"{postprocessing_config['kmers']['k']}mers_solid.pkl", 'rb') as f:
             aux['kmers'] = pickle.load(f)
+
         aux['old_graph'] = dgl.load_graphs(paths['graph']+f'{genome}.dgl')[0][0]
         aux['hifi_r2s'] = Fasta(paths['ec_reads'])
         aux['ul_r2s'] = Fasta(paths['ul_reads']) if paths['ul_reads'] else None

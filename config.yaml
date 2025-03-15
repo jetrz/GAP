@@ -23,11 +23,11 @@ run:
       # - 'fruitfly_ont'
   postprocessing:
     genomes:
-      # - 'arab'
-      # - 'chicken'
+      - 'arab'
+      - 'chicken'
       - 'mouse'
-      - 'maize'
       - 'chm13'
+      - 'maize'
       # - 'hg002_d_20x_scaf_p'
       # - 'hg002_d_20x_scaf_m'
       # - 'bonobo_d_20x_scaf_p'
@@ -48,7 +48,7 @@ postprocessing:
   walk_valid_p: 0.01
   use_telomere_info : true
   dfs_penalty: null # None, 'ol_len' or 'ol_sim'
-  decoding: 'gnnome_score' # 'default' or 'gnnome_score' or 'coverage'
+  decoding: 'coverage' # 'default' or 'gnnome_score' or 'coverage'
 
 misc:
   kmers:
