@@ -10,6 +10,8 @@ from generate_baseline.gnnome_decoding import preprocess_graph
 from generate_baseline.SymGatedGCN import SymGatedGCNModel
 from misc.utils import analyse_graph, asm_metrics, get_seqs, timedelta_to_str, yak_metrics, t2t_metrics
 
+COV_MEMO = {} # memoises the coverage differences between two seqs
+
 class Edge():
     def __init__(self, new_src_nid, new_dst_nid, old_src_nid, old_dst_nid, prefix_len, ol_len, ol_sim):
         self.new_src_nid = new_src_nid
@@ -557,6 +559,13 @@ def check_connection_cov(s1, s2, kmers, kmers_config):
     Validates an edge based on relative coverage, calculated using k-mer frequency. 
     If the difference in coverage between two sequences is too great, the edge is rejected.
     """
+    if (s1, s2) in COV_MEMO:
+        cov_diff, check = COV_MEMO[(s1, s2)]
+        return cov_diff, check
+    if (s2, s1) in COV_MEMO:
+        cov_diff, check = COV_MEMO[(s2, s1)]
+        return cov_diff, check
+
     k, diff, n = kmers_config['k'], kmers_config['diff'], kmers_config['n']
 
     def get_avg_cov(seq):
@@ -579,7 +588,9 @@ def check_connection_cov(s1, s2, kmers, kmers_config):
     
     cov1, cov2 = get_avg_cov(s1), get_avg_cov(s2)
     cov_diff = abs(cov1-cov2)
-    return cov_diff, cov_diff <= diff*max(cov1,cov2)
+    check = cov_diff <= diff*max(cov1,cov2)
+    COV_MEMO[(s1, s2)] = (cov_diff, check)
+    return cov_diff, check
 
 def get_best_walk_default(adj_list, start_node, n_old_walks, telo_ref, penalty=None, memo_chances=10000, visited_init=None):
     """
