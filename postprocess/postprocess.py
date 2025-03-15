@@ -1093,12 +1093,7 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
     for k, v in hyperparams.items():
         hyperparams_str += f"{k}: {v}, "
     print(hyperparams_str[:-2]+"\n")
-    walks, n2s, r2n, paf_data, old_graph, hifi_r2s, ul_r2s = aux['walks'], aux['n2s'], aux['r2n'], aux['paf_data'], aux['old_graph'], aux['hifi_r2s'], aux['ul_r2s']
-    # Create a list of all edges
-    edges_full = {}  # I dont know why this is necessary. but when cut transitives some edges are wrong otherwise. (This is from Martin's script)
-    for idx, (src, dst) in enumerate(zip(old_graph.edges()[0], old_graph.edges()[1])):
-        src, dst = src.item(), dst.item()
-        edges_full[(src, dst)] = idx
+    walks, n2s, r2n, paf_data, old_graph, edges_full, hifi_r2s, ul_r2s = aux['walks'], aux['n2s'], aux['r2n'], aux['paf_data'], aux['old_graph'], aux['edges_full'], aux['hifi_r2s'], aux['ul_r2s']
 
     print(f"Chopping old walks... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     if hyperparams['use_telomere_info']:
@@ -1130,11 +1125,7 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
     print(f"De-duplicating edges... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     adj_list = deduplicate(adj_list, walks)
 
-    print(f"Generating new walks... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-    decoding = hyperparams['decoding']
-    if decoding not in ['default', 'gnnome_score', 'coverage']:
-        print("Unrecognised decoding hyperparam. Using default...")
-        decoding = 'default'
+    print(f"Generating new walks with {hyperparams['decoding']} decoding... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     new_walks = get_walks(
         walk_ids=walk_ids,
         adj_list=adj_list,
@@ -1147,7 +1138,7 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
         old_graph=old_graph,
         old_walks=walks,
         edges_full=edges_full,
-        decoding=decoding
+        decoding=hyperparams['decoding']
     )
 
     print(f"Generating contigs... (Time: {timedelta_to_str(datetime.now() - time_start)})")
@@ -1184,8 +1175,16 @@ def run_postprocessing(config):
             aux['paf_data'] = pickle.load(f)
         with open(paths['hifiasm']+f"{postprocessing_config['kmers']['k']}mers_solid.pkl", 'rb') as f:
             aux['kmers'] = pickle.load(f)
+        
+        old_graph = dgl.load_graphs(paths['graph']+f'{genome}.dgl')[0][0]
+        # Create a list of all edges
+        edges_full = {}  # I dont know why this is necessary. but when cut transitives some edges are wrong otherwise. (This is from Martin's script)
+        for idx, (src, dst) in enumerate(zip(old_graph.edges()[0], old_graph.edges()[1])):
+            src, dst = src.item(), dst.item()
+            edges_full[(src, dst)] = idx
+        aux['old_graph'] = old_graph
+        aux['edges_full'] = edges_full
 
-        aux['old_graph'] = dgl.load_graphs(paths['graph']+f'{genome}.dgl')[0][0]
         aux['hifi_r2s'] = Fasta(paths['ec_reads'])
         aux['ul_r2s'] = Fasta(paths['ul_reads']) if paths['ul_reads'] else None
 
