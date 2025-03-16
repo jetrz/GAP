@@ -569,9 +569,7 @@ def check_connection_cov(s1, s2, kmers, kmers_config):
     k, diff, n = kmers_config['k'], kmers_config['diff'], kmers_config['n']
 
     def get_avg_cov(seq):
-        n_windows = int((len(seq)-k+1)*n)
-        starts = random.sample(range(len(seq)-k+1), n_windows)
-        kmer_list = [seq[i:i+k] for i in starts]
+        kmer_list = [seq[i:i+k] for i in range(len(seq)-k+1)]
 
         total_cov, missed = 0, 0
         for c_kmer in kmer_list:
@@ -856,16 +854,16 @@ def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, kme
     def get_surrounding_seq(walk_id, old_node_id):
         seq = n2s[old_node_id]
 
-        # old_walk = old_walks[walk_id]
-        # ind = old_walk.index(old_node_id)
-        # if ind > 0:
-        #     prev_node_id = old_walk[ind-1]
-        #     prefix_len = graph.edata['prefix_length'][edges_full[(prev_node_id, old_node_id)]]
-        #     seq = n2s[prev_node_id][:prefix_len] + seq
-        # if ind+1 < len(old_walk):
-        #     next_node_id = old_walk[ind+1]
-        #     prefix_len = graph.edata['prefix_length'][edges_full[(old_node_id, next_node_id)]]
-        #     seq = seq[:prefix_len] + n2s[next_node_id]
+        old_walk = old_walks[walk_id]
+        ind = old_walk.index(old_node_id)
+        if ind > 0:
+            prev_node_id = old_walk[ind-1]
+            prefix_len = graph.edata['prefix_length'][edges_full[(prev_node_id, old_node_id)]]
+            seq = n2s[prev_node_id][:prefix_len] + seq
+        if ind+1 < len(old_walk):
+            next_node_id = old_walk[ind+1]
+            prefix_len = graph.edata['prefix_length'][edges_full[(old_node_id, next_node_id)]]
+            seq = seq[:prefix_len] + n2s[next_node_id]
 
         return seq
         
