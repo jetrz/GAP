@@ -53,7 +53,7 @@ def asm_metrics(contigs, save_path, ref_path, minigraph_path, paftools_path):
     paf = save_path+"asm.paf"
     cmd = f'{minigraph_path} -t32 -xasm -g10k -r10k --show-unmap=yes {ref_path} {asm_path}'.split(' ')
     with open(paf, 'w') as f:
-        p = subprocess.Popen(cmd, stdout=f)
+        p = subprocess.Popen(cmd, stdout=f, stderr=subprocess.DEVNULL)
     p.wait()
 
     print(f"Running paftools...")
@@ -80,7 +80,7 @@ def yak_metrics(save_path, yak1, yak2, yak_path):
     save_file = save_path+"phs.txt"
     cmd = f'{yak_path} trioeval -t16 {yak1} {yak2} {save_path}0_assembly.fasta > {save_file}'.split()
     with open(save_file, 'w') as f:
-        p = subprocess.Popen(cmd, stdout=f)
+        p = subprocess.Popen(cmd, stdout=f, stderr=subprocess.DEVNULL)
     p.wait()
 
     switch_err, hamming_err = None, None
@@ -112,7 +112,7 @@ def t2t_metrics(save_path, t2t_chr_path, ref_path, motif):
             os.remove(f)
 
     cmd = f"{t2t_chr_path} -a {save_path}0_assembly.fasta -r {ref_path} -m {motif} -t 10"
-    print("Command:", cmd)
+    # print("Command:", cmd)
     subprocess.run(cmd, shell=True, cwd=save_path[:-1], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     aligned_path = f"{save_path}T2T_sequences_alignment_T2T.txt"
     with open(aligned_path, 'r') as f:

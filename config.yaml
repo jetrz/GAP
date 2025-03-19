@@ -23,24 +23,24 @@ run:
       # - 'fruitfly_ont'
   postprocessing:
     genomes:
-      - 'arab'
-      - 'chicken'
-      - 'mouse'
-      - 'chm13'
-      - 'maize'
+      # - 'arab'
+      # - 'chicken'
+      # - 'mouse'
+      # - 'chm13'
+      # - 'maize'
       # - 'hg002_d_20x_scaf_p'
       # - 'hg002_d_20x_scaf_m'
-      # - 'bonobo_d_20x_scaf_p'
-      # - 'bonobo_d_20x_scaf_m'
-      # - 'gorilla_d_20x_scaf_p'
-      # - 'gorilla_d_20x_scaf_m'
-      # - 'fruitfly_ont'
-      # - 'tomato_ont'
-      # - 'arab_ont'
+      - 'bonobo_d_20x_scaf_p'
+      - 'bonobo_d_20x_scaf_m'
+      - 'gorilla_d_20x_scaf_p'
+      - 'gorilla_d_20x_scaf_m'
+      - 'fruitfly_ont'
+      - 'tomato_ont'
+      - 'arab_ont'
       # - 'hg002_d_ont_scaf_p'
       # - 'hg002_d_ont_scaf_m'
-      # - 'hg005_d_ont_scaf_p'
-      # - 'hg005_d_ont_scaf_m'
+      - 'hg005_d_ont_scaf_p'
+      - 'hg005_d_ont_scaf_m'
       # - 'gorilla_d_ont_20x_scaf_p'
       # - 'gorilla_d_ont_20x_scaf_m'
 
@@ -53,8 +53,8 @@ postprocessing:
 misc:
   kmers:
     k: 21
+    chopping_diff: 0.5 # this difference is used specifically for coverage walk chopping
     diff: 1 # range between 0 to 1 where 0 removes all edges, while 1 removes none. diff threshold calculated by abs(cov1-cov2) <= diff*max(cov1,cov2)
-    n: 1 # % of kmers to check per read. 0 checks no kmers, while 1 checks all kmers
   paths:
     model: '/home/stumanuel/GAP/misc/default_best.pt'
     seqtk: '/home/stumanuel/GitHub/seqtk/seqtk'

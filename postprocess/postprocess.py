@@ -3,6 +3,7 @@ from Bio import Seq, SeqIO
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
+from multiprocessing import Pool
 from pyfaidx import Fasta
 from tqdm import tqdm
 
@@ -11,6 +12,7 @@ from generate_baseline.SymGatedGCN import SymGatedGCNModel
 from misc.utils import analyse_graph, asm_metrics, get_seqs, timedelta_to_str, yak_metrics, t2t_metrics
 
 COV_MEMO = {} # memoises the coverage differences between two seqs
+N2S, KMERS, KMERS_CONFIG = None, None, None # for multiprocessing of coverage chopping
 
 class Edge():
     def __init__(self, new_src_nid, new_dst_nid, old_src_nid, old_dst_nid, prefix_len, ol_len, ol_sim):
@@ -71,7 +73,7 @@ class AdjList():
 def chop_walks_seqtk(old_walks, n2s, graph, edges_full, rep1, rep2, seqtk_path):
     """
     Generates telomere information, then chops the walks. 
-    1. I regenerate the contigs from the walk nodes. I'm not sure why but when regenerating it this way it differs slightly from the assembly fasta, so i'm doing it this way just to be safe.
+    1. Contigs are regenerated from the walk nodes.
     2. seqtk is used to detect telomeres, then I manually count the motifs in each region to determine if it is a '+' or '-' motif.
     3. The walks are then chopped. When a telomere is found:
         a. If there is no telomere in the current walk, and the walk is already >= twice the length of the found telomere, the telomere is added to the walk and then chopped.
@@ -138,8 +140,9 @@ def chop_walks_seqtk(old_walks, n2s, graph, edges_full, rep1, rep2, seqtk_path):
     os.remove(temp_fasta_name)
 
     # Chop walks
+    print("Chopping walks based on telomeres...")
     new_walks, telo_ref = [], {}
-    for walk_id, walk in enumerate(old_walks):
+    for walk_id, walk in tqdm(enumerate(old_walks), ncols=120):
         curr_ind, curr_walk, curr_telo = 0, [], None
         while curr_ind < len(walk):
             curr_node = walk[curr_ind]
@@ -211,9 +214,47 @@ def chop_walks_seqtk(old_walks, n2s, graph, edges_full, rep1, rep2, seqtk_path):
         if v['end'] == '+': rep1_count += 1
         if v['start'] == '-': rep2_count += 1
         if v['end'] == '-': rep2_count += 1
-    print(f"Chopping complete! n Old Walks: {len(old_walks)}, n New Walks: {len(new_walks)}, n +ve telomeric regions: {rep1_count}, n -ve telomeric regions: {rep2_count}")
+    print(f"Telomere chopping complete! n Old Walks: {len(old_walks)}, n New Walks: {len(new_walks)}, n +ve telomeric regions: {rep1_count}, n -ve telomeric regions: {rep2_count}")
 
     return new_walks, telo_ref
+
+def process_walk_coverage(walk):
+    new_walks, curr_walk = [], []
+    iterator = tqdm(enumerate(walk), total=len(walk), ncols=120) if len(walk)>=500 else enumerate(walk)
+    for i, n in iterator:
+        curr_walk.append(n)
+        if i == len(walk)-1: continue
+        s1, s2 = N2S[n], N2S[walk[i+1]]
+        _, cov_check, is_invalid = check_connection_cov(s1, s2, KMERS, KMERS_CONFIG['k'], KMERS_CONFIG['chopping_diff'], memoize=False)
+        if not is_invalid and not cov_check:
+            new_walks.append(curr_walk.copy())
+            curr_walk = []
+
+    new_walks.append(curr_walk.copy())
+    return new_walks
+
+def chop_walks_coverage(walks, n2s, kmers, kmers_config):
+    """
+    Chops walks based on coverage differences. Multi-threaded.
+    """
+
+    global N2S, KMERS, KMERS_CONFIG
+    N2S, KMERS, KMERS_CONFIG = n2s, kmers, kmers_config
+
+    walk_lens = [len(w) for w in walks if len(w)>=500]
+    print("Walks with len >= 500:", sorted(walk_lens))
+
+    new_walks = []
+    with Pool(40) as pool:
+        results = pool.imap_unordered(process_walk_coverage, iter(walks))
+        for result in results:
+            new_walks.extend(result)
+
+    # Sanity Check
+    assert sorted([item for inner in new_walks for item in inner]) == sorted([item for inner in walks for item in inner]), "Not all nodes accounted for when chopping old walks!"
+    print(f"Coverage chopping complete! n Old Walks: {len(walks)}, n New Walks: {len(new_walks)}")
+
+    return new_walks
 
 def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, edges_full, walk_valid_p, gnnome_config, model_path):
     """
@@ -327,6 +368,7 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, edges
 
             # ghost nodes are only useful if they have both at least one outgoing and one incoming edge
             if not curr_out_neighbours or not curr_in_neighbours: continue
+            if len(curr_out_neighbours) == 1 and len(curr_in_neighbours) == 1 and n2n_start[next(iter(curr_out_neighbours))[0]] == n2n_end[next(iter(curr_in_neighbours))[0]]: continue
 
             for n in curr_out_neighbours:
                 adj_list.add_edge(Edge(
@@ -402,6 +444,7 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, edges
             curr_in_neighbours.add((in_n_id, data['prefix_len_ins'][i], data['ol_len_ins'][i], data['ol_sim_ins'][i]))
 
         if not curr_out_neighbours or not curr_in_neighbours: continue
+        if len(curr_out_neighbours) == 1 and len(curr_in_neighbours) == 1 and n2n_start[next(iter(curr_out_neighbours))[0]] == n2n_end[next(iter(curr_in_neighbours))[0]]: continue
 
         for n in curr_out_neighbours:
             adj_list.add_edge(Edge(
@@ -554,19 +597,17 @@ def deduplicate(adj_list, old_walks):
     print("Final number of edges:", sum(len(x) for x in adj_list.adj_list.values()))
     return adj_list
 
-def check_connection_cov(s1, s2, kmers, kmers_config):
+def check_connection_cov(s1, s2, kmers, k, diff, memoize=True):
     """
     Validates an edge based on relative coverage, calculated using k-mer frequency. 
     If the difference in coverage between two sequences is too great, the edge is rejected.
     """
     if (s1, s2) in COV_MEMO:
-        cov_diff, check = COV_MEMO[(s1, s2)]
-        return cov_diff, check
+        cov_diff, check, is_invalid = COV_MEMO[(s1, s2)]
+        return cov_diff, check, is_invalid
     if (s2, s1) in COV_MEMO:
-        cov_diff, check = COV_MEMO[(s2, s1)]
-        return cov_diff, check
-
-    k, diff, n = kmers_config['k'], kmers_config['diff'], kmers_config['n']
+        cov_diff, check, is_invalid = COV_MEMO[(s2, s1)]
+        return cov_diff, check, is_invalid
 
     def get_avg_cov(seq):
         kmer_list = [seq[i:i+k] for i in range(len(seq)-k+1)]
@@ -579,16 +620,17 @@ def check_connection_cov(s1, s2, kmers, kmers_config):
             else:
                 total_cov += kmers[c_kmer]
             
-        if missed == len(kmer_list): # the sequence only contained invalid kmers
-            return -1
+        if missed > 0.8*len(kmer_list): # the sequence only contained invalid kmers
+            return -99999
         else:
             return total_cov/(len(kmer_list)-missed)
     
     cov1, cov2 = get_avg_cov(s1), get_avg_cov(s2)
+    is_invalid = cov1 == -99999 or cov2 == -99999
     cov_diff = abs(cov1-cov2)
-    check = cov_diff <= diff*max(cov1,cov2)
-    COV_MEMO[(s1, s2)] = (cov_diff, check)
-    return cov_diff, check
+    check = (cov1 == -99999 and cov2 == -99999) or cov_diff <= diff*max(cov1,cov2)
+    if memoize: COV_MEMO[(s1, s2)] = (cov_diff, check, is_invalid)
+    return cov_diff, check, is_invalid
 
 def get_best_walk_default(adj_list, start_node, n_old_walks, telo_ref, penalty=None, memo_chances=10000, visited_init=None):
     """
@@ -809,7 +851,7 @@ def get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, n2s, 
 
             if c_node < n_old_walks: break
             assert walk[-2] < n_old_walks and highest_score.new_dst_nid < n_old_walks, "Non S -> G -> S sequence found!"
-            _, cov_check = check_connection_cov(s1, n2s[highest_score.old_dst_nid], kmers, kmers_config)
+            _, cov_check, _ = check_connection_cov(s1, n2s[highest_score.old_dst_nid], kmers, kmers_config['k'], kmers_config['diff'])
             if cov_check: break
 
         if no_neigh_found: break            
@@ -888,8 +930,8 @@ def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, kme
                 curr_telo = get_telo_info(s.new_dst_nid)
                 if check_telo_compatibility(walk_telo, curr_telo) < 0: continue
                 s2 = get_surrounding_seq(s.new_dst_nid, s.old_dst_nid)
-                diff, cov_check = check_connection_cov(s1, s2, kmers, kmers_config)
-                if not cov_check: continue
+                diff, cov_check, is_invalid = check_connection_cov(s1, s2, kmers, kmers_config['k'], kmers_config['diff'])
+                if not is_invalid and not cov_check: continue
                 if diff < best_diff:
                     best_diff = diff
                     best_g_neigh = g.new_dst_nid
@@ -1105,6 +1147,8 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
     walks, n2s, r2n, paf_data, old_graph, edges_full, hifi_r2s, ul_r2s = aux['walks'], aux['n2s'], aux['r2n'], aux['paf_data'], aux['old_graph'], aux['edges_full'], aux['hifi_r2s'], aux['ul_r2s']
 
     print(f"Chopping old walks... (Time: {timedelta_to_str(datetime.now() - time_start)})")
+    if hyperparams['kmers']['chopping_diff'] < 1:
+        walks = chop_walks_coverage(walks, n2s, aux['kmers'], hyperparams['kmers'])
     if hyperparams['use_telomere_info']:
         rep1, rep2 = hyperparams['telo_motif'][0], hyperparams['telo_motif'][1]
         walks, telo_ref = chop_walks_seqtk(walks, n2s, old_graph, edges_full, rep1, rep2, paths['seqtk'])
@@ -1197,7 +1241,7 @@ def run_postprocessing(config):
         aux['hifi_r2s'] = Fasta(paths['ec_reads'])
         aux['ul_r2s'] = Fasta(paths['ul_reads']) if paths['ul_reads'] else None
 
-        # postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
-        for diff in [0.5, 0.75, 1]:
-            postprocessing_config['kmers']['diff'] = diff
-            postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
+        postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
+        # for diff in [0.5, 0.75, 1]:
+        #     postprocessing_config['kmers']['diff'] = diff
+        #     postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
