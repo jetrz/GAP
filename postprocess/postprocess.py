@@ -4,6 +4,7 @@ from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
 from multiprocessing import Pool
+import numpy as np
 from pyfaidx import Fasta
 from tqdm import tqdm
 
@@ -597,7 +598,7 @@ def deduplicate(adj_list, old_walks):
     print("Final number of edges:", sum(len(x) for x in adj_list.adj_list.values()))
     return adj_list
 
-def filter_edges(adj_list, paf_data, save_path):
+def filter_edges(adj_list, filtering_config, save_path):
     ol_lens, ol_sims = [], []
     for n in adj_list.adj_list.values():
         for edge in n:
@@ -607,23 +608,18 @@ def filter_edges(adj_list, paf_data, save_path):
     plot_histo(ol_lens, save_path+"ol_len_dist.png")
     plot_histo(ol_sims, save_path+"ol_sim_dist.png")
 
-    ol_lens_all, ol_sims_all = [], []
-    ghost_data = paf_data['ghost_nodes']['hop_1']
-    for orient in ['+', '-']:
-        for info in ghost_data[orient].values():
-            for c in info['ol_len_outs']:
-                ol_lens_all.append(c)
-            for c in info['ol_len_ins']:
-                ol_lens_all.append(c)
-            for c in info['ol_similarity_outs']:
-                ol_sims_all.append(c)
-            for c in info['ol_similarity_ins']:
-                ol_sims_all.append(c)
+    ol_len_cutoff, ol_sim_cutoff = np.percentile(ol_lens, filtering_config['ol_len']), np.percentile(ol_sims, filtering_config['ol_sim'])
+    new_adj_list = AdjList()
+    n_removed = 0
+    for edges in adj_list.adj_list.values():
+        for e in edges:
+            if e.ol_len < ol_len_cutoff or e.ol_sim < ol_sim_cutoff: 
+                n_removed += 1
+                continue
+            new_adj_list.add_edge(e)
 
-    plot_histo(ol_lens_all, save_path+"ol_len_all_dist.png")
-    plot_histo(ol_sims_all, save_path+"ol_sim_all_dist.png")
-
-    return
+    print("Number of edges removed:", n_removed)
+    return new_adj_list
 
 def check_connection_cov(s1, s2, kmers, k, diff, memoize=True):
     """
@@ -1201,7 +1197,8 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
         print("No suitable nodes and edges found to add to these walks. Returning...")
         return
     
-    filter_edges(adj_list, paf_data, paths['save'])
+    print(f"Filtering out edges... (Time: {timedelta_to_str(datetime.now() - time_start)})")
+    adj_list = filter_edges(adj_list, hyperparams['filtering'], paths['save'])
 
     # Remove duplicate edges between nodes. If there are multiple connections between a walk and another node/walk, we choose the best one.
     # This could probably have been done while adding the edges in. However, to avoid confusion, i'm doing this separately.

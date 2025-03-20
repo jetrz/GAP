@@ -49,6 +49,9 @@ postprocessing:
   use_telomere_info : true
   dfs_penalty: null # None, 'ol_len' or 'ol_sim'
   decoding: 'coverage' # 'default' or 'gnnome_score' or 'coverage'
+  filtering:
+    ol_len: 1
+    ol_sim: 5
 
 misc:
   kmers:
