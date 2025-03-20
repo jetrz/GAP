@@ -7,6 +7,7 @@ import networkx as nx
 import numpy as np
 import pickle
 from scipy.signal import argrelextrema
+import seaborn as sns
 
 def timedelta_to_str(delta):
     hours, remainder = divmod(delta.seconds, 3600)
@@ -63,8 +64,7 @@ def asm_metrics(contigs, save_path, ref_path, minigraph_path, paftools_path):
         p = subprocess.Popen(cmd, stdout=f)
     p.wait()
     with open(report) as f:
-        report = f.read()
-        print(report)
+        print(f.read())
 
 def yak_metrics(save_path, yak1, yak2, yak_path):
     """
@@ -241,6 +241,13 @@ def filter_out_kmers(d, save_path_wo_ext):
     plt.xlabel('Kmer Frequency')
     plt.ylabel('# Kmers')
     plt.savefig(save_path_wo_ext+".png")
+    plt.clf()
+
+    return
+
+def plot_histo(vals, save_path):
+    sns.histplot(vals, bins=100, kde=True)  # Histogram with density curve
+    plt.savefig(save_path)
     plt.clf()
 
     return

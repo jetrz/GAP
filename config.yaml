@@ -30,7 +30,7 @@ run:
       # - 'maize'
       # - 'hg002_d_20x_scaf_p'
       # - 'hg002_d_20x_scaf_m'
-      - 'bonobo_d_20x_scaf_p'
+      # - 'bonobo_d_20x_scaf_p'
       - 'bonobo_d_20x_scaf_m'
       - 'gorilla_d_20x_scaf_p'
       - 'gorilla_d_20x_scaf_m'

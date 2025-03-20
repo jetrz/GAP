@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 from generate_baseline.gnnome_decoding import preprocess_graph
 from generate_baseline.SymGatedGCN import SymGatedGCNModel
-from misc.utils import analyse_graph, asm_metrics, get_seqs, timedelta_to_str, yak_metrics, t2t_metrics
+from misc.utils import analyse_graph, asm_metrics, get_seqs, plot_histo, timedelta_to_str, yak_metrics, t2t_metrics
 
 COV_MEMO = {} # memoises the coverage differences between two seqs
 N2S, KMERS, KMERS_CONFIG = None, None, None # for multiprocessing of coverage chopping
@@ -220,7 +220,7 @@ def chop_walks_seqtk(old_walks, n2s, graph, edges_full, rep1, rep2, seqtk_path):
 
 def process_walk_coverage(walk):
     new_walks, curr_walk = [], []
-    iterator = tqdm(enumerate(walk), total=len(walk), ncols=120) if len(walk)>=500 else enumerate(walk)
+    iterator = tqdm(enumerate(walk), total=len(walk), ncols=120) if len(walk)>=1000 else enumerate(walk)
     for i, n in iterator:
         curr_walk.append(n)
         if i == len(walk)-1: continue
@@ -241,8 +241,8 @@ def chop_walks_coverage(walks, n2s, kmers, kmers_config):
     global N2S, KMERS, KMERS_CONFIG
     N2S, KMERS, KMERS_CONFIG = n2s, kmers, kmers_config
 
-    walk_lens = [len(w) for w in walks if len(w)>=500]
-    print("Walks with len >= 500:", sorted(walk_lens))
+    walk_lens = [len(w) for w in walks if len(w)>=1000]
+    print("Walks with len >= 1000:", sorted(walk_lens))
 
     new_walks = []
     with Pool(40) as pool:
@@ -596,6 +596,34 @@ def deduplicate(adj_list, old_walks):
     
     print("Final number of edges:", sum(len(x) for x in adj_list.adj_list.values()))
     return adj_list
+
+def filter_edges(adj_list, paf_data, save_path):
+    ol_lens, ol_sims = [], []
+    for n in adj_list.adj_list.values():
+        for edge in n:
+            ol_lens.append(edge.ol_len)
+            ol_sims.append(edge.ol_sim)
+
+    plot_histo(ol_lens, save_path+"ol_len_dist.png")
+    plot_histo(ol_sims, save_path+"ol_sim_dist.png")
+
+    ol_lens_all, ol_sims_all = [], []
+    ghost_data = paf_data['ghost_nodes']['hop_1']
+    for orient in ['+', '-']:
+        for info in ghost_data[orient].values():
+            for c in info['ol_len_outs']:
+                ol_lens_all.append(c)
+            for c in info['ol_len_ins']:
+                ol_lens_all.append(c)
+            for c in info['ol_similarity_outs']:
+                ol_sims_all.append(c)
+            for c in info['ol_similarity_ins']:
+                ol_sims_all.append(c)
+
+    plot_histo(ol_lens_all, save_path+"ol_len_all_dist.png")
+    plot_histo(ol_sims_all, save_path+"ol_sim_all_dist.png")
+
+    return
 
 def check_connection_cov(s1, s2, kmers, k, diff, memoize=True):
     """
@@ -1172,6 +1200,8 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
     if adj_list is None and walk_ids is None and n2s_ghost is None and e2s is None:
         print("No suitable nodes and edges found to add to these walks. Returning...")
         return
+    
+    filter_edges(adj_list, paf_data, paths['save'])
 
     # Remove duplicate edges between nodes. If there are multiple connections between a walk and another node/walk, we choose the best one.
     # This could probably have been done while adding the edges in. However, to avoid confusion, i'm doing this separately.
@@ -1241,7 +1271,7 @@ def run_postprocessing(config):
         aux['hifi_r2s'] = Fasta(paths['ec_reads'])
         aux['ul_r2s'] = Fasta(paths['ul_reads']) if paths['ul_reads'] else None
 
-        postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
-        # for diff in [0.5, 0.75, 1]:
-        #     postprocessing_config['kmers']['diff'] = diff
-        #     postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
+        # postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
+        for diff in [0.25, 0.5]:
+            postprocessing_config['kmers']['chopping_diff'] = diff
+            postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
