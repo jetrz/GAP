@@ -584,11 +584,15 @@ def deduplicate(adj_list, old_walks):
                         if i == neigh.old_src_nid: # new one is better, update dupchecker and remove old one from adj list
                             dup_checker[new_dst_nid] = neigh
                             break
+                        elif i == og.old_src_nid:
+                            break
                 elif new_dst_nid < n_old_walks:
                     walk = old_walks[new_dst_nid]
                     for i in walk:
                         if i == neigh.old_dst_nid: # new one is better, update dupchecker and remove old one from adj list
                             dup_checker[new_dst_nid] = neigh
+                            break
+                        elif i == og.old_dst_nid:
                             break
                 else:
                     raise ValueError("Duplicate edge between two non-walks found!")
@@ -598,7 +602,7 @@ def deduplicate(adj_list, old_walks):
     print("Final number of edges:", sum(len(x) for x in adj_list.adj_list.values()))
     return adj_list
 
-def filter_edges(adj_list, filtering_config, save_path):
+def filter_edges(adj_list, filtering_config, save_path=None):
     ol_lens, ol_sims = [], []
     for n in adj_list.adj_list.values():
         for edge in n:
@@ -610,8 +614,9 @@ def filter_edges(adj_list, filtering_config, save_path):
 
     ol_len_cutoff = 0 # TO CHANGE THIS!
 
-    plot_histo(ol_lens, save_path+"ol_len_dist.png")
-    plot_histo(ol_sims, save_path+"ol_sim_dist.png", verts={'Lower Bound':ol_sim_cutoff})
+    if save_path:
+        plot_histo(ol_lens, save_path+"ol_len_dist.png")
+        plot_histo(ol_sims, save_path+"ol_sim_dist.png", verts={'Lower Bound':ol_sim_cutoff})
 
     new_adj_list = AdjList()
     n_removed = 0
