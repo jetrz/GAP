@@ -605,10 +605,14 @@ def filter_edges(adj_list, filtering_config, save_path):
             ol_lens.append(edge.ol_len)
             ol_sims.append(edge.ol_sim)
 
-    plot_histo(ol_lens, save_path+"ol_len_dist.png")
-    plot_histo(ol_sims, save_path+"ol_sim_dist.png")
+    q1_ol_sim, q3_ol_sim = np.percentile(ol_sims, 25), np.percentile(ol_sims, 75)
+    ol_sim_cutoff = q1_ol_sim - 1.5*(q3_ol_sim-q1_ol_sim)
 
-    ol_len_cutoff, ol_sim_cutoff = np.percentile(ol_lens, filtering_config['ol_len']), np.percentile(ol_sims, filtering_config['ol_sim'])
+    ol_len_cutoff = 0 # TO CHANGE THIS!
+
+    plot_histo(ol_lens, save_path+"ol_len_dist.png")
+    plot_histo(ol_sims, save_path+"ol_sim_dist.png", verts={'Lower Bound':ol_sim_cutoff})
+
     new_adj_list = AdjList()
     n_removed = 0
     for edges in adj_list.adj_list.values():
@@ -1269,6 +1273,6 @@ def run_postprocessing(config):
         aux['ul_r2s'] = Fasta(paths['ul_reads']) if paths['ul_reads'] else None
 
         # postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
-        for diff in [0.25, 0.5]:
-            postprocessing_config['kmers']['chopping_diff'] = diff
+        for diff in [0.75, 1]:
+            postprocessing_config['kmers']['diff'] = diff
             postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)

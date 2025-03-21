@@ -245,8 +245,13 @@ def filter_out_kmers(d, save_path_wo_ext):
 
     return
 
-def plot_histo(vals, save_path):
+def plot_histo(vals, save_path, verts=None):
     sns.histplot(vals, bins=100, kde=True)  # Histogram with density curve
+
+    if verts:
+        for name, value in verts.items():
+            plt.axvline(x=value, linestyle='--', label=name)
+
     plt.savefig(save_path)
     plt.clf()
 
