@@ -8,68 +8,14 @@ import numpy as np
 from pyfaidx import Fasta
 from tqdm import tqdm
 
+from .custom_graph import AdjList, Edge
+from .iterate import iterate_postprocessing
 from generate_baseline.gnnome_decoding import preprocess_graph
 from generate_baseline.SymGatedGCN import SymGatedGCNModel
 from misc.utils import analyse_graph, asm_metrics, get_seqs, plot_histo, timedelta_to_str, yak_metrics, t2t_metrics
 
 COV_MEMO = {} # memoises the coverage differences between two seqs
 N2S, KMERS, KMERS_CONFIG = None, None, None # for multiprocessing of coverage chopping
-
-class Edge():
-    def __init__(self, new_src_nid, new_dst_nid, old_src_nid, old_dst_nid, prefix_len, ol_len, ol_sim):
-        self.new_src_nid = new_src_nid
-        self.new_dst_nid = new_dst_nid
-        self.old_src_nid = old_src_nid
-        self.old_dst_nid = old_dst_nid
-        self.prefix_len = prefix_len
-        self.ol_len = ol_len
-        self.ol_sim = ol_sim
-
-class AdjList():
-    """
-    Maps new_src_nid to edges.
-    """
-
-    def __init__(self):
-        self.adj_list = defaultdict(set)
-
-    def add_edge(self, edge):
-        self.adj_list[edge.new_src_nid].add(edge)
-
-    def remove_edge(self, edge):
-        neighbours = self.adj_list[edge.new_src_nid]
-        if edge not in neighbours:
-            print("WARNING: Removing an edge that does not exist!")
-        self.adj_list[edge.new_src_nid].discard(edge)
-        if not self.adj_list[edge.new_src_nid]: del self.adj_list[edge.new_src_nid]
-
-    def get_edge(self, new_src_nid, new_dst_nid):
-        for e in self.adj_list[new_src_nid]:
-            if e.new_dst_nid == new_dst_nid: 
-                return e
-            
-    def remove_node(self, n_id):
-        if n_id in self.adj_list: del self.adj_list[n_id]
-
-        new_adj_list = defaultdict(set)
-        for new_src_nid, neighbours in self.adj_list.items():
-            new_neighbours = set(e for e in neighbours if e.new_dst_nid != n_id)
-            if new_neighbours: new_adj_list[new_src_nid] = new_neighbours
-        self.adj_list = new_adj_list
-
-    def get_neighbours(self, n_id):
-        return self.adj_list.get(n_id, [])
-    
-    def __str__(self):
-        n_nodes, n_edges = len(self.adj_list), sum(len(v) for v in self.adj_list.values())
-        text = f"Number of nodes: {n_nodes}, Number of edges: {n_edges}\n"
-        for k, v in self.adj_list.items():
-            c_text = f"Node: {k}, Neighbours: "
-            for e in v:
-                c_text += f"{e.new_dst_nid}, "
-            text += c_text[:-2]
-            text += "\n"
-        return text
 
 def chop_walks_seqtk(old_walks, n2s, graph, edges_full, rep1, rep2, seqtk_path):
     """
@@ -369,7 +315,7 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, edges
 
             # ghost nodes are only useful if they have both at least one outgoing and one incoming edge
             if not curr_out_neighbours or not curr_in_neighbours: continue
-            if len(curr_out_neighbours) == 1 and len(curr_in_neighbours) == 1 and n2n_start[next(iter(curr_out_neighbours))[0]] == n2n_end[next(iter(curr_in_neighbours))[0]]: continue
+            if all(x==n2n_start[next(iter(curr_out_neighbours))[0]] for x in [n2n_start[n[0]] for n in curr_out_neighbours]+[n2n_end[n[0]] for n in curr_in_neighbours]): continue
 
             for n in curr_out_neighbours:
                 adj_list.add_edge(Edge(
@@ -445,7 +391,7 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, edges
             curr_in_neighbours.add((in_n_id, data['prefix_len_ins'][i], data['ol_len_ins'][i], data['ol_sim_ins'][i]))
 
         if not curr_out_neighbours or not curr_in_neighbours: continue
-        if len(curr_out_neighbours) == 1 and len(curr_in_neighbours) == 1 and n2n_start[next(iter(curr_out_neighbours))[0]] == n2n_end[next(iter(curr_in_neighbours))[0]]: continue
+        if all(x==n2n_start[next(iter(curr_out_neighbours))[0]] for x in [n2n_start[n[0]] for n in curr_out_neighbours]+[n2n_end[n[0]] for n in curr_in_neighbours]): continue
 
         for n in curr_out_neighbours:
             adj_list.add_edge(Edge(
@@ -602,20 +548,17 @@ def deduplicate(adj_list, old_walks):
     print("Final number of edges:", sum(len(x) for x in adj_list.adj_list.values()))
     return adj_list
 
-def filter_edges(adj_list, filtering_config, save_path=None):
+def filter_edges(adj_list, ol_len_percentile, ol_sim_percentile, save_path=None):
     ol_lens, ol_sims = [], []
     for n in adj_list.adj_list.values():
         for edge in n:
             ol_lens.append(edge.ol_len)
             ol_sims.append(edge.ol_sim)
 
-    q1_ol_sim, q3_ol_sim = np.percentile(ol_sims, 25), np.percentile(ol_sims, 75)
-    ol_sim_cutoff = q1_ol_sim - 1.5*(q3_ol_sim-q1_ol_sim)
-
-    ol_len_cutoff = 0 # TO CHANGE THIS!
+    ol_len_cutoff, ol_sim_cutoff = np.percentile(ol_lens, ol_len_percentile), np.percentile(ol_sims, ol_sim_percentile)
 
     if save_path:
-        plot_histo(ol_lens, save_path+"ol_len_dist.png")
+        plot_histo(ol_lens, save_path+"ol_len_dist.png", verts={'Lower Bound':ol_len_cutoff})
         plot_histo(ol_sims, save_path+"ol_sim_dist.png", verts={'Lower Bound':ol_sim_cutoff})
 
     new_adj_list = AdjList()
@@ -628,7 +571,7 @@ def filter_edges(adj_list, filtering_config, save_path=None):
             new_adj_list.add_edge(e)
 
     print("Number of edges removed:", n_removed)
-    return new_adj_list
+    return new_adj_list, {'ol_len_cutoff':ol_len_cutoff, 'ol_sim_cutoff':ol_sim_cutoff}
 
 def check_connection_cov(s1, s2, kmers, k, diff, memoize=True):
     """
@@ -1003,7 +946,7 @@ def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s, n2s, kmers, kmers_
             return get_best_walk_default(adj_list, start_node, n_old_walks, telo_ref, dfs_penalty, visited_init=visited_init)
 
 
-    # Generating new walks using greedy DFS
+    # Initialise reverse adj list
     new_walks = []
     temp_walk_ids, temp_adj_list = deepcopy(walk_ids), deepcopy(adj_list)
     rev_adj_list = AdjList()
@@ -1092,7 +1035,18 @@ def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s, n2s, kmers, kmers_
     print(f"New walks generated! n new walks: {len(new_walks)}")
     return new_walks
 
-def get_contigs(old_walks, new_walks, adj_list, n2s, n2s_ghost, g, edges_full):
+def rename_ghosts(iteration, new_walks, n2s_ghost, n_old_walks):
+    new_n2s_ghost = {}
+    for nw in new_walks:
+        for i, n in enumerate(nw):
+            if n < n_old_walks: continue
+            new_name = f"{iteration}-{n}"
+            new_n2s_ghost[new_name] = n2s_ghost[n]
+            nw[i] = new_name
+
+    return new_walks, new_n2s_ghost
+
+def get_contigs(old_walks, new_walks, adj_lists, n2s, n2s_ghost, g, edges_full, n2nns):
     """
     Recreates the contigs given the new walks. 
     
@@ -1104,25 +1058,34 @@ def get_contigs(old_walks, new_walks, adj_list, n2s, n2s_ghost, g, edges_full):
     walk_nodes, walk_seqs, walk_prefix_lens = [], [], []
     for i, walk in enumerate(new_walks):
         c_nodes, c_seqs, c_prefix_lens = [], [], []
+
         for j, node in enumerate(walk):
-            if node >= n_old_walks: # Node is a new ghost node
+            if "-" in str(node): # Node is a new ghost node
                 c_nodes.append(node)
                 c_seqs.append(str(n2s_ghost[node]))
-                curr_edge = adj_list.get_edge(node, walk[j+1])
+                split = node.split("-")
+                iteration, gid = int(split[0]), int(split[1])
+                curr_edge = adj_lists[iteration].get_edge(gid, n2nns[iteration][walk[j+1]])
                 c_prefix_lens.append(curr_edge.prefix_len)
             else: # Node is an original walk
+                node = int(node)
+                assert node < n_old_walks, "Invalid sequence node id found!"
                 old_walk = old_walks[node]
                 if j == 0:
                     start = 0
                 else:
-                    curr_edge = adj_list.get_edge(walk[j-1], node)
+                    split = walk[j-1].split("-")
+                    iteration, gid = int(split[0]), int(split[1])
+                    curr_edge = adj_lists[iteration].get_edge(gid, n2nns[iteration][node])
                     start = old_walk.index(curr_edge.old_dst_nid)
                 
                 if j+1 == len(walk):
                     end = len(old_walk)-1
                     prefix_len = None
                 else:
-                    curr_edge = adj_list.get_edge(node, walk[j+1])
+                    split = walk[j+1].split("-")
+                    iteration, gid = int(split[0]), int(split[1])
+                    curr_edge = adj_lists[iteration].get_edge(n2nns[iteration][node], gid)
                     end = old_walk.index(curr_edge.old_src_nid)
                     prefix_len = curr_edge.prefix_len
 
@@ -1198,7 +1161,7 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
         n2s=n2s,
         old_graph=old_graph,
         edges_full=edges_full,
-        walk_valid_p=hyperparams['walk_valid_p'],
+        walk_valid_p=hyperparams['walk_valid_p'][0],
         gnnome_config=gnnome_config,
         model_path=paths['model']
     )
@@ -1207,7 +1170,7 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
         return
     
     print(f"Filtering out edges... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-    adj_list = filter_edges(adj_list, hyperparams['filtering'], paths['save'])
+    adj_list, filtering_config = filter_edges(adj_list, hyperparams['filtering']['ol_len'], hyperparams['filtering']['ol_sim'], paths['save'])
 
     # Remove duplicate edges between nodes. If there are multiple connections between a walk and another node/walk, we choose the best one.
     # This could probably have been done while adding the edges in. However, to avoid confusion, i'm doing this separately.
@@ -1230,11 +1193,26 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
         decoding=hyperparams['decoding']
     )
 
+    print(f"Iterating postprocessing... (Time: {timedelta_to_str(datetime.now() - time_start)})")
+    new_walks, n2s_ghost = rename_ghosts(0, new_walks, n2s_ghost, len(walks))
+    new_walks, new_n2s_ghost, adj_lists, n2nns = iterate_postprocessing(
+        aux=aux,
+        hyperparams=hyperparams,
+        new_walks=new_walks,
+        telo_ref=telo_ref,
+        n2s_ghost=n2s_ghost,
+        edges_full=edges_full,
+        filtering_config=filtering_config
+    )
+    n2s_ghost.update(new_n2s_ghost)
+    adj_lists.insert(0, adj_list)
+    n2nns.insert(0, {i:i for i in range(len(walks))})
+
     print(f"Generating contigs... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-    contigs = get_contigs(walks, new_walks, adj_list, n2s, n2s_ghost, old_graph, edges_full)
+    contigs = get_contigs(walks, new_walks, adj_lists, n2s, n2s_ghost, old_graph, edges_full, n2nns)
 
     print(f"Calculating assembly metrics... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-    analyse_graph(adj_list, telo_ref, new_walks, paths['save'])
+    # analyse_graph(adj_list, telo_ref, new_walks, paths['save']) # This function is outdated since adding iterations
     asm_metrics(contigs, paths['save'], paths['ref'], paths['minigraph'], paths['paftools'])
     t2t_metrics(paths['save'], paths['t2t_chr'], paths['ref'], hyperparams['telo_motif'][0])
     if paths['yak1'] and paths['yak2']: yak_metrics(paths['save'], paths['yak1'], paths['yak2'], paths['yak'])
@@ -1277,7 +1255,7 @@ def run_postprocessing(config):
         aux['hifi_r2s'] = Fasta(paths['ec_reads'])
         aux['ul_r2s'] = Fasta(paths['ul_reads']) if paths['ul_reads'] else None
 
-        # postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
-        for diff in [0.75, 1]:
-            postprocessing_config['kmers']['diff'] = diff
-            postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
+        postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
+        # for diff in [0.75, 1]:
+        #     postprocessing_config['kmers']['diff'] = diff
+        #     postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)

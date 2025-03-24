@@ -24,39 +24,40 @@ run:
   postprocessing:
     genomes:
       # - 'arab'
-      # - 'chicken'
-      # - 'mouse'
-      # - 'chm13'
-      # - 'maize'
+      - 'chicken'
+      - 'mouse'
+      - 'chm13'
+      - 'maize'
       # - 'hg002_d_20x_scaf_p'
       # - 'hg002_d_20x_scaf_m'
       # - 'bonobo_d_20x_scaf_p'
-      - 'bonobo_d_20x_scaf_m'
-      - 'gorilla_d_20x_scaf_p'
-      - 'gorilla_d_20x_scaf_m'
-      - 'fruitfly_ont'
-      - 'tomato_ont'
-      - 'arab_ont'
+      # - 'bonobo_d_20x_scaf_m'
+      # - 'gorilla_d_20x_scaf_p'
+      # - 'gorilla_d_20x_scaf_m'
+      # - 'fruitfly_ont'
+      # - 'tomato_ont'
+      # - 'arab_ont'
       # - 'hg002_d_ont_scaf_p'
       # - 'hg002_d_ont_scaf_m'
-      - 'hg005_d_ont_scaf_p'
-      - 'hg005_d_ont_scaf_m'
+      # - 'hg005_d_ont_scaf_p'
+      # - 'hg005_d_ont_scaf_m'
       # - 'gorilla_d_ont_20x_scaf_p'
       # - 'gorilla_d_ont_20x_scaf_m'
 
 postprocessing:
-  walk_valid_p: 0.01
   use_telomere_info : true
   dfs_penalty: null # None, 'ol_len' or 'ol_sim'
   decoding: 'coverage' # 'default' or 'gnnome_score' or 'coverage'
+  iterations: 3 
+  walk_valid_p: [0.01, 0.01, 0.025] # ensure there are at least # iterations number of values
   filtering:
-    ol_len: 1
-    ol_sim: 5
+    ol_len: 0
+    ol_sim: 1
 
 misc:
   kmers:
     k: 21
-    chopping_diff: 0.5 # this difference is used specifically for coverage walk chopping
+    chopping_diff: 1 # this difference is used specifically for coverage walk chopping
     diff: 1 # range between 0 to 1 where 0 removes all edges, while 1 removes none. diff threshold calculated by abs(cov1-cov2) <= diff*max(cov1,cov2)
   paths:
     model: '/home/stumanuel/GAP/misc/default_best.pt'
