@@ -608,6 +608,18 @@ def check_connection_cov(s1, s2, kmers, k, diff, memoize=True):
     if memoize: COV_MEMO[(s1, s2)] = (cov_diff, check, is_invalid)
     return cov_diff, check, is_invalid
 
+def simplify(adj_list, n):
+    """
+    Removes all sequence nodes that have more than n outgoing edges.
+    """
+    new_adj_list = AdjList()
+    for neighs in adj_list.adj_list.values():
+        if len(neighs) <= n:
+            for edge in neighs:
+                new_adj_list.add_edge(edge)
+
+    return new_adj_list
+
 def get_best_walk_default(adj_list, start_node, n_old_walks, telo_ref, penalty=None, memo_chances=10000, visited_init=None):
     """
     Given a start node, run the greedy DFS to retrieve the walk with the most key nodes.
@@ -1177,6 +1189,8 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
     print(f"De-duplicating edges... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     adj_list = deduplicate(adj_list, walks)
 
+    adj_list = simplify(adj_list, 1)
+
     print(f"Generating new walks with {hyperparams['decoding']} decoding... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     new_walks = get_walks(
         walk_ids=walk_ids,
@@ -1192,7 +1206,12 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
         edges_full=edges_full,
         decoding=hyperparams['decoding']
     )
+
+    # Do an analysis just for first iteration
+    print(f"Calculating first iteration assembly metrics... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     analyse_graph(adj_list, telo_ref, new_walks, paths['save'], 0)
+    contigs = get_contigs(walks, new_walks, [adj_list], n2s, n2s_ghost, old_graph, edges_full, [{i:i for i in range(len(walks))}])
+    asm_metrics(contigs, paths['save'], paths['ref'], paths['minigraph'], paths['paftools'])
 
     print(f"Iterating postprocessing... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     new_walks, n2s_ghost = rename_ghosts(0, new_walks, n2s_ghost, len(walks))
@@ -1213,7 +1232,7 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
     print(f"Generating contigs... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     contigs = get_contigs(walks, new_walks, adj_lists, n2s, n2s_ghost, old_graph, edges_full, n2nns)
 
-    print(f"Calculating assembly metrics... (Time: {timedelta_to_str(datetime.now() - time_start)})")
+    print(f"Calculating final assembly metrics... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     asm_metrics(contigs, paths['save'], paths['ref'], paths['minigraph'], paths['paftools'])
     t2t_metrics(paths['save'], paths['t2t_chr'], paths['ref'], hyperparams['telo_motif'][0])
     if paths['yak1'] and paths['yak2']: yak_metrics(paths['save'], paths['yak1'], paths['yak2'], paths['yak'])

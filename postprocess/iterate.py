@@ -56,6 +56,18 @@ def rename_ghosts(iteration, new_walks, n2s_ghost, n_old_walks):
 
     return new_walks, new_n2s_ghost
 
+def simplify(adj_list, n):
+    """
+    Removes all sequence nodes that have more than n outgoing edges.
+    """
+    new_adj_list = AdjList()
+    for neighs in adj_list.adj_list.values():
+        if len(neighs) <= n:
+            for edge in neighs:
+                new_adj_list.add_edge(edge)
+
+    return new_adj_list
+
 ###############################################################################################################
 ###############################################################################################################
 
@@ -467,7 +479,7 @@ def iterate_postprocessing(aux, hyperparams, paths, new_walks, telo_ref, n2s_gho
     old_walks, n2s, r2n, paf_data, hifi_r2s, ul_r2s, kmers, old_graph = aux['walks'], aux['n2s'], aux['r2n'], aux['paf_data'], aux['hifi_r2s'], aux['ul_r2s'], aux['kmers'], aux['old_graph']
     adj_lists, n2nns = [], []
 
-    print("Iteration 0 walks:", [w for w in new_walks if len(w)>1])
+    # print("Iteration 0 walks:", [w for w in new_walks if len(w)>1])
 
     for iteration in range(1, hyperparams['iterations']):
         print(f"Starting iteration {iteration}...")
@@ -495,6 +507,7 @@ def iterate_postprocessing(aux, hyperparams, paths, new_walks, telo_ref, n2s_gho
 
         new_adj_list = filter_edges(new_adj_list, filtering_config['ol_len_cutoff'], filtering_config['ol_sim_cutoff'])
         new_adj_list = deduplicate(new_adj_list, new_walks, old_walks)
+        new_adj_list = simplify(new_adj_list, 1)
         adj_lists.append(new_adj_list)
 
         new_new_walks = get_walks(
@@ -518,6 +531,6 @@ def iterate_postprocessing(aux, hyperparams, paths, new_walks, telo_ref, n2s_gho
         # Replace new_walks with the decompressed version of our new new walks. It should follow the same format so the process is repeatable
         new_walks = decompress_walks(new_new_walks, new_walks)
 
-        print(f"Iteration {iteration} walks:", [w for w in new_walks if len(w)>1])
+        # print(f"Iteration {iteration} walks:", [w for w in new_walks if len(w)>1])
     
     return new_walks, n2s_ghost, adj_lists, n2nns
