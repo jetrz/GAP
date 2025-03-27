@@ -2,7 +2,7 @@ from Bio import Seq
 from copy import deepcopy
 from tqdm import tqdm
 
-from misc.utils import get_seqs
+from misc.utils import analyse_graph, get_seqs
 from .custom_graph import AdjList, Edge
 
 ########################### COPIED FROM postprocess.py TO PREVENT CIRCULAR IMPORT #############################
@@ -463,7 +463,7 @@ def decompress_walks(new_new_walks, new_walks):
 
     return res
                 
-def iterate_postprocessing(aux, hyperparams, new_walks, telo_ref, n2s_ghost, edges_full, filtering_config):
+def iterate_postprocessing(aux, hyperparams, paths, new_walks, telo_ref, n2s_ghost, edges_full, filtering_config):
     old_walks, n2s, r2n, paf_data, hifi_r2s, ul_r2s, kmers, old_graph = aux['walks'], aux['n2s'], aux['r2n'], aux['paf_data'], aux['hifi_r2s'], aux['ul_r2s'], aux['kmers'], aux['old_graph']
     adj_lists, n2nns = [], []
 
@@ -508,6 +508,7 @@ def iterate_postprocessing(aux, hyperparams, new_walks, telo_ref, n2s_ghost, edg
             old_graph=old_graph,
             edges_full=edges_full
         )
+        analyse_graph(new_adj_list, new_telo_ref, new_new_walks, paths['save'], iteration)
 
         # Convert all ghost node ids in new_new_walks and n2s_ghost in this iteration from .e.g 35 -> 1-35 for iteration 1.
         new_new_walks, curr_n2s_ghost = rename_ghosts(iteration, new_new_walks, curr_n2s_ghost, len(new_walks))

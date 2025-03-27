@@ -1192,13 +1192,14 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
         edges_full=edges_full,
         decoding=hyperparams['decoding']
     )
-    analyse_graph(adj_list, telo_ref, new_walks, paths['save']) # This function only works for the first iteration
+    analyse_graph(adj_list, telo_ref, new_walks, paths['save'], 0)
 
     print(f"Iterating postprocessing... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     new_walks, n2s_ghost = rename_ghosts(0, new_walks, n2s_ghost, len(walks))
     new_walks, new_n2s_ghost, adj_lists, n2nns = iterate_postprocessing(
         aux=aux,
         hyperparams=hyperparams,
+        paths=paths,
         new_walks=new_walks,
         telo_ref=telo_ref,
         n2s_ghost=n2s_ghost,

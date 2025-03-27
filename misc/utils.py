@@ -136,7 +136,7 @@ def get_seqs(id, hifi_r2s, ul_r2s):
     except Exception as e:
         raise ValueError("Read not present in seq dataset FASTAs!")
     
-def analyse_graph(adj_list, telo_ref, walks, save_path):
+def analyse_graph(adj_list, telo_ref, walks, save_path, iteration):
     # For debugging
     nxg = nx.DiGraph()
     for source, neighs in adj_list.adj_list.items():
@@ -186,7 +186,7 @@ def analyse_graph(adj_list, telo_ref, walks, save_path):
     nx.draw(nxg, pos=pos, with_labels=True, node_color=colors, node_size=50, font_size=9)
     legend_handles = [mpatches.Patch(color=color_map[key], label=labels[key]) for key in sorted(color_map)]
     plt.legend(handles=legend_handles, loc='best')
-    plt.savefig(save_path+'nx_graph_before.png')
+    plt.savefig(save_path+f'nx_graph_before_it{iteration}.png')
     plt.clf()
 
     nxg.remove_edges_from(list(nxg.edges()))
@@ -197,7 +197,7 @@ def analyse_graph(adj_list, telo_ref, walks, save_path):
     nx.draw(nxg, pos=pos, with_labels=True, node_color=colors, node_size=50, font_size=9)
     legend_handles = [mpatches.Patch(color=color_map[key], label=labels[key]) for key in sorted(color_map)]
     plt.legend(handles=legend_handles, loc='best')
-    plt.savefig(save_path+'nx_graph_after.png')
+    plt.savefig(save_path+f'nx_graph_after_it{iteration}.png')
 
     return
 
