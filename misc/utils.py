@@ -203,7 +203,7 @@ def analyse_graph(adj_list, telo_ref, walks, save_path):
 
 def filter_out_kmers(d, save_path_wo_ext):
     """
-    Filters out kmers by frequency and saves the new pickle.
+    Filters out kmers by frequency and plots distribution + threshold graph.
     Lower threshold is the first local minima from the left, upper threshold is the first local minima after the average.
     Method from the paper "Constructing telomere-to-telomere diploid genome by polishing haploid nanopore-based assembly"
     """
@@ -228,8 +228,6 @@ def filter_out_kmers(d, save_path_wo_ext):
     if upper is None: upper = len(values)
 
     filtered_d = {k:v for k,v in d.items() if lower <= v <= upper}
-    with open(save_path_wo_ext+".pkl", "wb") as p:
-        pickle.dump(filtered_d, p)
 
     plt.figure(figsize=(10, 5))
     x_indices = range(1, len(values) + 1)
@@ -243,7 +241,7 @@ def filter_out_kmers(d, save_path_wo_ext):
     plt.savefig(save_path_wo_ext+".png")
     plt.clf()
 
-    return
+    return filtered_d
 
 def plot_histo(vals, save_path, verts=None):
     sns.histplot(vals, bins=100, kde=True)  # Histogram with density curve

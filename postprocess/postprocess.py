@@ -1192,6 +1192,7 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
         edges_full=edges_full,
         decoding=hyperparams['decoding']
     )
+    analyse_graph(adj_list, telo_ref, new_walks, paths['save']) # This function only works for the first iteration
 
     print(f"Iterating postprocessing... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     new_walks, n2s_ghost = rename_ghosts(0, new_walks, n2s_ghost, len(walks))
@@ -1212,7 +1213,6 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
     contigs = get_contigs(walks, new_walks, adj_lists, n2s, n2s_ghost, old_graph, edges_full, n2nns)
 
     print(f"Calculating assembly metrics... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-    # analyse_graph(adj_list, telo_ref, new_walks, paths['save']) # This function is outdated since adding iterations
     asm_metrics(contigs, paths['save'], paths['ref'], paths['minigraph'], paths['paftools'])
     t2t_metrics(paths['save'], paths['t2t_chr'], paths['ref'], hyperparams['telo_motif'][0])
     if paths['yak1'] and paths['yak2']: yak_metrics(paths['save'], paths['yak1'], paths['yak2'], paths['yak'])

@@ -23,7 +23,7 @@ run:
       # - 'fruitfly_ont'
   postprocessing:
     genomes:
-      # - 'arab'
+      - 'arab'
       - 'chicken'
       - 'mouse'
       - 'chm13'
@@ -48,7 +48,7 @@ postprocessing:
   use_telomere_info : true
   dfs_penalty: null # None, 'ol_len' or 'ol_sim'
   decoding: 'coverage' # 'default' or 'gnnome_score' or 'coverage'
-  iterations: 3 
+  iterations: 1 
   walk_valid_p: [0.01, 0.01, 0.025] # ensure there are at least # iterations number of values
   filtering:
     ol_len: 0

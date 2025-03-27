@@ -490,6 +490,7 @@ def iterate_postprocessing(aux, hyperparams, new_walks, telo_ref, n2s_ghost, edg
         )
         if new_adj_list == None and curr_n2s_ghost == None:
             print("No suitable nodes and edges found to add to these walks. Skipping iteration...")
+            adj_lists.append(None)
             continue
 
         new_adj_list = filter_edges(new_adj_list, filtering_config['ol_len_cutoff'], filtering_config['ol_sim_cutoff'])
