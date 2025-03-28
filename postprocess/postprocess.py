@@ -1188,7 +1188,7 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
     
     print(f"Filtering out edges... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     adj_list, filtering_config = filter_edges(adj_list, hyperparams['filtering']['ol_len'], hyperparams['filtering']['ol_sim'], paths['save'])
-    adj_list = remove_repetitive_ghosts(adj_list, n2s_ghost, aux['kmers'], hyperparams['kmers']['k'], 0.8)
+    adj_list = remove_repetitive_ghosts(adj_list, n2s_ghost, aux['kmers'], hyperparams['kmers']['k'], hyperparams['remove_repetitive_ghosts'])
 
     # Remove duplicate edges between nodes. If there are multiple connections between a walk and another node/walk, we choose the best one.
     # This could probably have been done while adding the edges in. However, to avoid confusion, i'm doing this separately.

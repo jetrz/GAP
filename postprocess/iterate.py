@@ -511,7 +511,7 @@ def iterate_postprocessing(aux, hyperparams, paths, new_walks, telo_ref, n2s_gho
             continue
 
         new_adj_list = filter_edges(new_adj_list, filtering_config['ol_len_cutoff'], filtering_config['ol_sim_cutoff'])
-        new_adj_list = remove_repetitive_ghosts(new_adj_list, curr_n2s_ghost, aux['kmers'], hyperparams['kmers']['k'], 0.8)
+        new_adj_list = remove_repetitive_ghosts(new_adj_list, curr_n2s_ghost, aux['kmers'], hyperparams['kmers']['k'], hyperparams['remove_repetitive_ghosts'])
         new_adj_list = deduplicate(new_adj_list, new_walks, old_walks)
         adj_lists.append(new_adj_list)
 
