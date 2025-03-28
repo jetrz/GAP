@@ -56,17 +56,22 @@ def rename_ghosts(iteration, new_walks, n2s_ghost, n_old_walks):
 
     return new_walks, new_n2s_ghost
 
-def simplify(adj_list, n):
-    """
-    Removes all sequence nodes that have more than n outgoing edges.
-    """
-    new_adj_list = AdjList()
-    for neighs in adj_list.adj_list.values():
-        if len(neighs) <= n:
-            for edge in neighs:
-                new_adj_list.add_edge(edge)
+def remove_repetitive_ghosts(adj_list, n2s_ghost, kmers, k, threshold):
+    removed, initial = 0, len(n2s_ghost)
+    for nid, seq in n2s_ghost.items():
+        kmer_list = [seq[i:i+k] for i in range(len(seq)-k+1)]
+        missed = 0
+        for c_kmer in kmer_list:
+            if c_kmer not in kmers: c_kmer = str(Seq.Seq(c_kmer).reverse_complement())
+            if c_kmer not in kmers: # if it is still not in kmers, that means it was filtered out due to missing solid threshold
+                missed += 1
 
-    return new_adj_list
+        if missed > threshold*len(kmer_list):
+            adj_list.remove_node(nid)
+            removed += 1
+
+    print(f"Repetitive ghosts removed: {removed}/{initial}")
+    return adj_list
 
 ###############################################################################################################
 ###############################################################################################################
@@ -506,8 +511,8 @@ def iterate_postprocessing(aux, hyperparams, paths, new_walks, telo_ref, n2s_gho
             continue
 
         new_adj_list = filter_edges(new_adj_list, filtering_config['ol_len_cutoff'], filtering_config['ol_sim_cutoff'])
+        new_adj_list = remove_repetitive_ghosts(new_adj_list, curr_n2s_ghost, aux['kmers'], hyperparams['kmers']['k'], 0.8)
         new_adj_list = deduplicate(new_adj_list, new_walks, old_walks)
-        new_adj_list = simplify(new_adj_list, 1)
         adj_lists.append(new_adj_list)
 
         new_new_walks = get_walks(

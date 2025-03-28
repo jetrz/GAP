@@ -608,17 +608,22 @@ def check_connection_cov(s1, s2, kmers, k, diff, memoize=True):
     if memoize: COV_MEMO[(s1, s2)] = (cov_diff, check, is_invalid)
     return cov_diff, check, is_invalid
 
-def simplify(adj_list, n):
-    """
-    Removes all sequence nodes that have more than n outgoing edges.
-    """
-    new_adj_list = AdjList()
-    for neighs in adj_list.adj_list.values():
-        if len(neighs) <= n:
-            for edge in neighs:
-                new_adj_list.add_edge(edge)
+def remove_repetitive_ghosts(adj_list, n2s_ghost, kmers, k, threshold):
+    removed, initial = 0, len(n2s_ghost)
+    for nid, seq in n2s_ghost.items():
+        kmer_list = [seq[i:i+k] for i in range(len(seq)-k+1)]
+        missed = 0
+        for c_kmer in kmer_list:
+            if c_kmer not in kmers: c_kmer = str(Seq.Seq(c_kmer).reverse_complement())
+            if c_kmer not in kmers: # if it is still not in kmers, that means it was filtered out due to missing solid threshold
+                missed += 1
 
-    return new_adj_list
+        if missed > threshold*len(kmer_list):
+            adj_list.remove_node(nid)
+            removed += 1
+
+    print(f"Repetitive ghosts removed: {removed}/{initial}")
+    return adj_list
 
 def get_best_walk_default(adj_list, start_node, n_old_walks, telo_ref, penalty=None, memo_chances=10000, visited_init=None):
     """
@@ -1183,13 +1188,12 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
     
     print(f"Filtering out edges... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     adj_list, filtering_config = filter_edges(adj_list, hyperparams['filtering']['ol_len'], hyperparams['filtering']['ol_sim'], paths['save'])
+    adj_list = remove_repetitive_ghosts(adj_list, n2s_ghost, aux['kmers'], hyperparams['kmers']['k'], 0.8)
 
     # Remove duplicate edges between nodes. If there are multiple connections between a walk and another node/walk, we choose the best one.
     # This could probably have been done while adding the edges in. However, to avoid confusion, i'm doing this separately.
     print(f"De-duplicating edges... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     adj_list = deduplicate(adj_list, walks)
-
-    adj_list = simplify(adj_list, 1)
 
     print(f"Generating new walks with {hyperparams['decoding']} decoding... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     new_walks = get_walks(
@@ -1210,11 +1214,11 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
     # Do an analysis just for first iteration
     print(f"Calculating first iteration assembly metrics... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     analyse_graph(adj_list, telo_ref, new_walks, paths['save'], 0)
+    new_walks, n2s_ghost = rename_ghosts(0, new_walks, n2s_ghost, len(walks))
     contigs = get_contigs(walks, new_walks, [adj_list], n2s, n2s_ghost, old_graph, edges_full, [{i:i for i in range(len(walks))}])
     asm_metrics(contigs, paths['save'], paths['ref'], paths['minigraph'], paths['paftools'])
 
     print(f"Iterating postprocessing... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-    new_walks, n2s_ghost = rename_ghosts(0, new_walks, n2s_ghost, len(walks))
     new_walks, new_n2s_ghost, adj_lists, n2nns = iterate_postprocessing(
         aux=aux,
         hyperparams=hyperparams,
