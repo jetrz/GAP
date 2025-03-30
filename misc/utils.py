@@ -139,9 +139,11 @@ def get_seqs(id, hifi_r2s, ul_r2s):
 def analyse_graph(adj_list, telo_ref, walks, save_path, iteration):
     # For debugging
     nxg = nx.DiGraph()
+    labels = {}
     for source, neighs in adj_list.adj_list.items():
         for n in neighs:
             nxg.add_edge(source, n.new_dst_nid)
+            labels[(source, n.new_dst_nid)] = f"OL Len: {n.ol_len}\nOL Sim: {round(n.ol_sim, 3)}\nPrefix Len: {n.prefix_len}"
     pickle.dump(nxg, open(save_path+"nx_graph.pkl", 'wb'))
 
     colors = []
@@ -171,7 +173,7 @@ def analyse_graph(adj_list, telo_ref, walks, save_path, iteration):
         4: 'yellow',
         5: 'purple'
     }
-    labels = {
+    legend = {
         0: 'No telomere',
         1: 'Both start and end',
         2: 'Start (+)',
@@ -182,20 +184,24 @@ def analyse_graph(adj_list, telo_ref, walks, save_path, iteration):
     colors = [color_map[c] for c in colors]
 
     pos = nx.spring_layout(nxg, seed=42)
-    plt.figure(figsize=(25,25))
+    plt.figure(figsize=(20,20))
     nx.draw(nxg, pos=pos, with_labels=True, node_color=colors, node_size=50, font_size=9)
-    legend_handles = [mpatches.Patch(color=color_map[key], label=labels[key]) for key in sorted(color_map)]
+    nx.draw_networkx_edge_labels(nxg, pos=pos, edge_labels=labels, font_size=7)
+    legend_handles = [mpatches.Patch(color=color_map[key], label=legend[key]) for key in sorted(color_map)]
     plt.legend(handles=legend_handles, loc='best')
     plt.savefig(save_path+f'nx_graph_before_it{iteration}.png')
     plt.clf()
 
+    new_labels = {}
     nxg.remove_edges_from(list(nxg.edges()))
     for w in walks:
         for i, n in enumerate(w[:-1]):
             nxg.add_edge(n, w[i+1])
+            new_labels[(n, w[i+1])] = labels[(n, w[i+1])]
 
     nx.draw(nxg, pos=pos, with_labels=True, node_color=colors, node_size=50, font_size=9)
-    legend_handles = [mpatches.Patch(color=color_map[key], label=labels[key]) for key in sorted(color_map)]
+    nx.draw_networkx_edge_labels(nxg, pos=pos, edge_labels=new_labels, font_size=7)
+    legend_handles = [mpatches.Patch(color=color_map[key], label=legend[key]) for key in sorted(color_map)]
     plt.legend(handles=legend_handles, loc='best')
     plt.savefig(save_path+f'nx_graph_after_it{iteration}.png')
 

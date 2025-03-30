@@ -1211,12 +1211,13 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
         decoding=hyperparams['decoding']
     )
 
-    # Do an analysis just for first iteration
-    print(f"Calculating first iteration assembly metrics... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     analyse_graph(adj_list, telo_ref, new_walks, paths['save'], 0)
     new_walks, n2s_ghost = rename_ghosts(0, new_walks, n2s_ghost, len(walks))
-    contigs = get_contigs(walks, new_walks, [adj_list], n2s, n2s_ghost, old_graph, edges_full, [{i:i for i in range(len(walks))}])
-    asm_metrics(contigs, paths['save'], paths['ref'], paths['minigraph'], paths['paftools'])
+    # Do an analysis just for first iteration
+    if hyperparams['iterations'] > 1:
+        print(f"Calculating first iteration assembly metrics... (Time: {timedelta_to_str(datetime.now() - time_start)})")
+        contigs = get_contigs(walks, new_walks, [adj_list], n2s, n2s_ghost, old_graph, edges_full, [{i:i for i in range(len(walks))}])
+        asm_metrics(contigs, paths['save'], paths['ref'], paths['minigraph'], paths['paftools'])
 
     print(f"Iterating postprocessing... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     new_walks, new_n2s_ghost, adj_lists, n2nns = iterate_postprocessing(

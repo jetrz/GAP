@@ -23,8 +23,8 @@ run:
       # - 'fruitfly_ont'
   postprocessing:
     genomes:
-      # - 'arab'
-      - 'chicken'
+      - 'arab'
+      # - 'chicken'
       # - 'mouse'
       # - 'chm13'
       # - 'maize'
@@ -48,12 +48,12 @@ postprocessing:
   use_telomere_info : true
   dfs_penalty: null # None, 'ol_len' or 'ol_sim'
   decoding: 'coverage' # 'default' or 'gnnome_score' or 'coverage'
-  iterations: 2
-  walk_valid_p: [0.01, 0.025] # ensure there are at least # iterations number of values
+  iterations: 1
+  walk_valid_p: [0.01] # ensure there are at least # iterations number of values
   remove_repetitive_ghosts: 0.8 # removes ghost nodes that consist at least this % of non-solid kmers. 1 will remove no nodes, 0 will remove all
   filtering:
     ol_len: 0
-    ol_sim: 1
+    ol_sim: 0
 
 misc:
   kmers:
