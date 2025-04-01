@@ -3,8 +3,6 @@ from Bio import Seq, SeqIO
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
-from multiprocessing import Pool
-import numpy as np
 from pyfaidx import Fasta
 from tqdm import tqdm
 
@@ -12,10 +10,9 @@ from .custom_graph import AdjList, Edge
 from .iterate import iterate_postprocessing
 from generate_baseline.gnnome_decoding import preprocess_graph
 from generate_baseline.SymGatedGCN import SymGatedGCNModel
-from misc.utils import analyse_graph, asm_metrics, get_seqs, plot_histo, timedelta_to_str, yak_metrics, t2t_metrics
+from misc.utils import analyse_graph, asm_metrics, get_kmer_freq, get_kmer_solid_thresholds, get_seqs, timedelta_to_str, yak_metrics, t2t_metrics
 
-COV_MEMO = {} # memoises the coverage differences between two seqs
-N2S, KMERS, KMERS_CONFIG = None, None, None # for multiprocessing of coverage chopping
+KMER_COV_MEMO, SEQ_COV_MEMO = {}, {} # memoises the coverage for each kmer, and the differences between two seqs respectively
 
 def chop_walks_seqtk(old_walks, n2s, graph, edges_full, rep1, rep2, seqtk_path):
     """
@@ -165,44 +162,6 @@ def chop_walks_seqtk(old_walks, n2s, graph, edges_full, rep1, rep2, seqtk_path):
 
     return new_walks, telo_ref
 
-def process_walk_coverage(walk):
-    new_walks, curr_walk = [], []
-    iterator = tqdm(enumerate(walk), total=len(walk), ncols=120) if len(walk)>=1000 else enumerate(walk)
-    for i, n in iterator:
-        curr_walk.append(n)
-        if i == len(walk)-1: continue
-        s1, s2 = N2S[n], N2S[walk[i+1]]
-        _, cov_check, is_invalid = check_connection_cov(s1, s2, KMERS, KMERS_CONFIG['k'], KMERS_CONFIG['chopping_diff'], memoize=False)
-        if not is_invalid and not cov_check:
-            new_walks.append(curr_walk.copy())
-            curr_walk = []
-
-    new_walks.append(curr_walk.copy())
-    return new_walks
-
-def chop_walks_coverage(walks, n2s, kmers, kmers_config):
-    """
-    Chops walks based on coverage differences. Multi-threaded.
-    """
-
-    global N2S, KMERS, KMERS_CONFIG
-    N2S, KMERS, KMERS_CONFIG = n2s, kmers, kmers_config
-
-    walk_lens = [len(w) for w in walks if len(w)>=1000]
-    print("Walks with len >= 1000:", sorted(walk_lens))
-
-    new_walks = []
-    with Pool(40) as pool:
-        results = pool.imap_unordered(process_walk_coverage, iter(walks))
-        for result in results:
-            new_walks.extend(result)
-
-    # Sanity Check
-    assert sorted([item for inner in new_walks for item in inner]) == sorted([item for inner in walks for item in inner]), "Not all nodes accounted for when chopping old walks!"
-    print(f"Coverage chopping complete! n Old Walks: {len(walks)}, n New Walks: {len(new_walks)}")
-
-    return new_walks
-
 def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, edges_full, walk_valid_p, gnnome_config, model_path):
     """
     Adds nodes and edges from the PAF and graph.
@@ -299,8 +258,7 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, edges
     ghost_data = ghost_data['hop_1'] # WE ONLY DO FOR 1-HOP FOR NOW
     added_nodes_count = 0
     for orient in ['+', '-']:
-        print("Orient:", orient)
-        for read_id, data in tqdm(ghost_data[orient].items(), ncols=120):
+        for read_id, data in tqdm(ghost_data[orient].items(), ncols=120, desc=f"Orient: {orient}"):
             curr_out_neighbours, curr_in_neighbours = set(), set()
 
             for i, out_read_id in enumerate(data['outs']):
@@ -548,53 +506,35 @@ def deduplicate(adj_list, old_walks):
     print("Final number of edges:", sum(len(x) for x in adj_list.adj_list.values()))
     return adj_list
 
-def filter_edges(adj_list, ol_len_percentile, ol_sim_percentile, save_path=None):
-    ol_lens, ol_sims = [], []
-    for n in adj_list.adj_list.values():
-        for edge in n:
-            ol_lens.append(edge.ol_len)
-            ol_sims.append(edge.ol_sim)
-
-    ol_len_cutoff, ol_sim_cutoff = np.percentile(ol_lens, ol_len_percentile), np.percentile(ol_sims, ol_sim_percentile)
-
-    if save_path:
-        plot_histo(ol_lens, save_path+"ol_len_dist.png", verts={'Lower Bound':ol_len_cutoff})
-        plot_histo(ol_sims, save_path+"ol_sim_dist.png", verts={'Lower Bound':ol_sim_cutoff})
-
-    new_adj_list = AdjList()
-    n_removed = 0
-    for edges in adj_list.adj_list.values():
-        for e in edges:
-            if e.ol_len < ol_len_cutoff or e.ol_sim < ol_sim_cutoff: 
-                n_removed += 1
-                continue
-            new_adj_list.add_edge(e)
-
-    print("Number of edges removed:", n_removed)
-    return new_adj_list, {'ol_len_cutoff':ol_len_cutoff, 'ol_sim_cutoff':ol_sim_cutoff}
-
-def check_connection_cov(s1, s2, kmers, k, diff, memoize=True):
+def check_connection_cov(s1, s2, kmers_config, jf_path):
     """
     Validates an edge based on relative coverage, calculated using k-mer frequency. 
     If the difference in coverage between two sequences is too great, the edge is rejected.
     """
-    if (s1, s2) in COV_MEMO:
-        cov_diff, check, is_invalid = COV_MEMO[(s1, s2)]
+    if (s1, s2) in SEQ_COV_MEMO:
+        cov_diff, check, is_invalid = SEQ_COV_MEMO[(s1, s2)]
         return cov_diff, check, is_invalid
-    if (s2, s1) in COV_MEMO:
-        cov_diff, check, is_invalid = COV_MEMO[(s2, s1)]
+    if (s2, s1) in SEQ_COV_MEMO:
+        cov_diff, check, is_invalid = SEQ_COV_MEMO[(s2, s1)]
         return cov_diff, check, is_invalid
+
+    k, diff, lower, upper = kmers_config['k'], kmers_config['diff'], kmers_config['lower'], kmers_config['upper']
 
     def get_avg_cov(seq):
         kmer_list = [seq[i:i+k] for i in range(len(seq)-k+1)]
 
         total_cov, missed = 0, 0
         for c_kmer in kmer_list:
-            if c_kmer not in kmers: c_kmer = str(Seq.Seq(c_kmer).reverse_complement())
-            if c_kmer not in kmers: # if it is still not in kmers, that means it was filtered out due to missing solid threshold
+            if c_kmer in KMER_COV_MEMO:
+                freq = KMER_COV_MEMO[c_kmer]
+            else:
+                freq = get_kmer_freq(jf_path, c_kmer)
+                KMER_COV_MEMO[c_kmer] = freq
+
+            if freq <= lower or freq >= upper:
                 missed += 1
             else:
-                total_cov += kmers[c_kmer]
+                total_cov += freq
             
         if missed > 0.8*len(kmer_list): # the sequence only contained invalid kmers
             return -99999
@@ -605,17 +545,23 @@ def check_connection_cov(s1, s2, kmers, k, diff, memoize=True):
     is_invalid = cov1 == -99999 or cov2 == -99999
     cov_diff = abs(cov1-cov2)
     check = (cov1 == -99999 and cov2 == -99999) or cov_diff <= diff*max(cov1,cov2)
-    if memoize: COV_MEMO[(s1, s2)] = (cov_diff, check, is_invalid)
+    SEQ_COV_MEMO[(s1, s2)] = (cov_diff, check, is_invalid)
     return cov_diff, check, is_invalid
 
-def remove_repetitive_ghosts(adj_list, n2s_ghost, kmers, k, threshold):
+def remove_repetitive_ghosts(adj_list, n2s_ghost, kmer_config, threshold, jf_path):
+    k, lower, upper = kmer_config['k'], kmer_config['lower'], kmer_config['upper']
     removed, initial = 0, len(n2s_ghost)
-    for nid, seq in n2s_ghost.items():
+    for nid, seq in tqdm(n2s_ghost.items(), ncols=120):
         kmer_list = [seq[i:i+k] for i in range(len(seq)-k+1)]
         missed = 0
         for c_kmer in kmer_list:
-            if c_kmer not in kmers: c_kmer = str(Seq.Seq(c_kmer).reverse_complement())
-            if c_kmer not in kmers: # if it is still not in kmers, that means it was filtered out due to missing solid threshold
+            if c_kmer in KMER_COV_MEMO:
+                freq = KMER_COV_MEMO[c_kmer]
+            else:
+                freq = get_kmer_freq(jf_path, c_kmer)
+                KMER_COV_MEMO[c_kmer] = freq
+
+            if freq <= lower or freq >= upper:
                 missed += 1
 
         if missed > threshold*len(kmer_list):
@@ -776,7 +722,7 @@ def get_best_walk_default(adj_list, start_node, n_old_walks, telo_ref, penalty=N
 
     return res_walk, res_key_nodes, res_penalty, is_res_t2t
 
-def get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, n2s, kmers, kmers_config, penalty=None, visited_init=None):
+def get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, n2s, kmers_config, jf_path, penalty=None, visited_init=None):
     """
     Given a start node, recursively and greedily chooses the edge with the highest probabilty score while also checking telomere compatibility.
     Note: dfs penalty is currently not being used, but leaving it here for possible future extension. the 0 returned by this function represents the penalty of the best walk.
@@ -844,7 +790,7 @@ def get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, n2s, 
 
             if c_node < n_old_walks: break
             assert walk[-2] < n_old_walks and highest_score.new_dst_nid < n_old_walks, "Non S -> G -> S sequence found!"
-            _, cov_check, _ = check_connection_cov(s1, n2s[highest_score.old_dst_nid], kmers, kmers_config['k'], kmers_config['diff'])
+            _, cov_check, _ = check_connection_cov(s1, n2s[highest_score.old_dst_nid], kmers_config, jf_path)
             if cov_check: break
 
         if no_neigh_found: break            
@@ -861,7 +807,7 @@ def get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, n2s, 
 
     return walk, n_key_nodes, 0, is_t2t
 
-def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, kmers, kmers_config, graph, old_walks, edges_full, penalty=None, visited_init=None):
+def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, kmers_config, jf_path, graph, old_walks, edges_full, penalty=None, visited_init=None):
     """
     Given a start node, recursively and greedily chooses the next sequence node (performs 1 step lookahead to skip over the ghost) which has the lowest coverage difference.
     Note: dfs penalty is currently not being used, but leaving it here for possible future extension. the 0 returned by this function represents the penalty of the best walk.
@@ -923,7 +869,7 @@ def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, kme
                 curr_telo = get_telo_info(s.new_dst_nid)
                 if check_telo_compatibility(walk_telo, curr_telo) < 0: continue
                 s2 = get_surrounding_seq(s.new_dst_nid, s.old_dst_nid)
-                diff, cov_check, is_invalid = check_connection_cov(s1, s2, kmers, kmers_config['k'], kmers_config['diff'])
+                diff, cov_check, is_invalid = check_connection_cov(s1, s2, kmers_config, jf_path)
                 if not is_invalid and not cov_check: continue
                 if diff < best_diff:
                     best_diff = diff
@@ -943,7 +889,7 @@ def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, kme
 
     return walk, n_key_nodes, 0, is_t2t
 
-def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s, n2s, kmers, kmers_config, old_graph, old_walks, edges_full, decoding='default'):
+def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s, n2s, kmers_config, jf_path, old_graph, old_walks, edges_full, decoding='default'):
     """
     Creates the new walks, priotising key nodes with telomeres.
 
@@ -956,9 +902,9 @@ def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s, n2s, kmers, kmers_
     n_old_walks = len(walk_ids)
     def get_best_walk(adj_list, start_node, visited_init=None):
         if decoding == 'gnnome_score':
-            return get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, n2s, kmers, kmers_config, visited_init=visited_init)
+            return get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, n2s, kmers_config, jf_path, visited_init=visited_init)
         elif decoding == 'coverage':
-            return get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, kmers, kmers_config, old_graph, old_walks, edges_full, visited_init=visited_init)
+            return get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, kmers_config, jf_path, old_graph, old_walks, edges_full, visited_init=visited_init)
         else:
             return get_best_walk_default(adj_list, start_node, n_old_walks, telo_ref, dfs_penalty, visited_init=visited_init)
 
@@ -1160,8 +1106,6 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
     walks, n2s, r2n, paf_data, old_graph, edges_full, hifi_r2s, ul_r2s = aux['walks'], aux['n2s'], aux['r2n'], aux['paf_data'], aux['old_graph'], aux['edges_full'], aux['hifi_r2s'], aux['ul_r2s']
 
     print(f"Chopping old walks... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-    if hyperparams['kmers']['chopping_diff'] < 1:
-        walks = chop_walks_coverage(walks, n2s, aux['kmers'], hyperparams['kmers'])
     if hyperparams['use_telomere_info']:
         rep1, rep2 = hyperparams['telo_motif'][0], hyperparams['telo_motif'][1]
         walks, telo_ref = chop_walks_seqtk(walks, n2s, old_graph, edges_full, rep1, rep2, paths['seqtk'])
@@ -1186,9 +1130,9 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
         print("No suitable nodes and edges found to add to these walks. Returning...")
         return
     
-    print(f"Filtering out edges... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-    adj_list, filtering_config = filter_edges(adj_list, hyperparams['filtering']['ol_len'], hyperparams['filtering']['ol_sim'], paths['save'])
-    adj_list = remove_repetitive_ghosts(adj_list, n2s_ghost, aux['kmers'], hyperparams['kmers']['k'], hyperparams['remove_repetitive_ghosts'])
+    print(f"Removing repetitive ghosts... (Time: {timedelta_to_str(datetime.now() - time_start)})")
+    jf_path = paths['hifiasm']+f"{hyperparams['kmers']['k']}mers.jf"
+    adj_list = remove_repetitive_ghosts(adj_list, n2s_ghost, hyperparams['kmers'], hyperparams['remove_repetitive_ghosts'], jf_path)
 
     # Remove duplicate edges between nodes. If there are multiple connections between a walk and another node/walk, we choose the best one.
     # This could probably have been done while adding the edges in. However, to avoid confusion, i'm doing this separately.
@@ -1203,8 +1147,8 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
         dfs_penalty=hyperparams['dfs_penalty'],
         e2s=e2s,
         n2s=n2s,
-        kmers=aux['kmers'],
         kmers_config=hyperparams['kmers'],
+        jf_path=jf_path,
         old_graph=old_graph,
         old_walks=walks,
         edges_full=edges_full,
@@ -1227,8 +1171,7 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
         new_walks=new_walks,
         telo_ref=telo_ref,
         n2s_ghost=n2s_ghost,
-        edges_full=edges_full,
-        filtering_config=filtering_config
+        edges_full=edges_full
     )
     n2s_ghost.update(new_n2s_ghost)
     adj_lists.insert(0, adj_list)
@@ -1265,9 +1208,9 @@ def run_postprocessing(config):
             aux['r2n'] = pickle.load(f)
         with open(paths['paf_processed'], 'rb') as f:
             aux['paf_data'] = pickle.load(f)
-        with open(paths['hifiasm']+f"{postprocessing_config['kmers']['k']}mers_solid.pkl", 'rb') as f:
-            aux['kmers'] = pickle.load(f)
-        
+
+        postprocessing_config['kmers']['lower'], postprocessing_config['kmers']['upper'] = get_kmer_solid_thresholds(paths['hifiasm']+f"{postprocessing_config['kmers']['k']}mers")
+
         old_graph = dgl.load_graphs(paths['graph']+f'{genome}.dgl')[0][0]
         # Create a list of all edges
         edges_full = {}  # I dont know why this is necessary. but when cut transitives some edges are wrong otherwise. (This is from Martin's script)

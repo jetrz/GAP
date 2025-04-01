@@ -1,37 +1,43 @@
-from Bio import Seq
 from copy import deepcopy
 from tqdm import tqdm
 
-from misc.utils import analyse_graph, get_seqs
+from misc.utils import analyse_graph, get_kmer_freq, get_seqs
 from .custom_graph import AdjList, Edge
 
 ########################### COPIED FROM postprocess.py TO PREVENT CIRCULAR IMPORT #############################
 ###############################################################################################################
 
-COV_MEMO = {} # memoises the coverage differences between two seqs
+KMER_COV_MEMO, SEQ_COV_MEMO = {}, {} # memoises the coverage for each kmer, and the differences between two seqs respectively
 
-def check_connection_cov(s1, s2, kmers, k, diff, memoize=True):
+def check_connection_cov(s1, s2, kmers_config, jf_path):
     """
     Validates an edge based on relative coverage, calculated using k-mer frequency. 
     If the difference in coverage between two sequences is too great, the edge is rejected.
     """
-    if (s1, s2) in COV_MEMO:
-        cov_diff, check, is_invalid = COV_MEMO[(s1, s2)]
+    if (s1, s2) in SEQ_COV_MEMO:
+        cov_diff, check, is_invalid = SEQ_COV_MEMO[(s1, s2)]
         return cov_diff, check, is_invalid
-    if (s2, s1) in COV_MEMO:
-        cov_diff, check, is_invalid = COV_MEMO[(s2, s1)]
+    if (s2, s1) in SEQ_COV_MEMO:
+        cov_diff, check, is_invalid = SEQ_COV_MEMO[(s2, s1)]
         return cov_diff, check, is_invalid
+
+    k, diff, lower, upper = kmers_config['k'], kmers_config['diff'], kmers_config['lower'], kmers_config['upper']
 
     def get_avg_cov(seq):
         kmer_list = [seq[i:i+k] for i in range(len(seq)-k+1)]
 
         total_cov, missed = 0, 0
         for c_kmer in kmer_list:
-            if c_kmer not in kmers: c_kmer = str(Seq.Seq(c_kmer).reverse_complement())
-            if c_kmer not in kmers: # if it is still not in kmers, that means it was filtered out due to missing solid threshold
+            if c_kmer in KMER_COV_MEMO:
+                freq = KMER_COV_MEMO[c_kmer]
+            else:
+                freq = get_kmer_freq(jf_path, c_kmer)
+                KMER_COV_MEMO[c_kmer] = freq
+
+            if freq <= lower or freq >= upper:
                 missed += 1
             else:
-                total_cov += kmers[c_kmer]
+                total_cov += freq
             
         if missed > 0.8*len(kmer_list): # the sequence only contained invalid kmers
             return -99999
@@ -42,7 +48,7 @@ def check_connection_cov(s1, s2, kmers, k, diff, memoize=True):
     is_invalid = cov1 == -99999 or cov2 == -99999
     cov_diff = abs(cov1-cov2)
     check = (cov1 == -99999 and cov2 == -99999) or cov_diff <= diff*max(cov1,cov2)
-    if memoize: COV_MEMO[(s1, s2)] = (cov_diff, check, is_invalid)
+    SEQ_COV_MEMO[(s1, s2)] = (cov_diff, check, is_invalid)
     return cov_diff, check, is_invalid
 
 def rename_ghosts(iteration, new_walks, n2s_ghost, n_old_walks):
@@ -56,14 +62,20 @@ def rename_ghosts(iteration, new_walks, n2s_ghost, n_old_walks):
 
     return new_walks, new_n2s_ghost
 
-def remove_repetitive_ghosts(adj_list, n2s_ghost, kmers, k, threshold):
+def remove_repetitive_ghosts(adj_list, n2s_ghost, kmer_config, threshold, jf_path):
+    k, lower, upper = kmer_config['k'], kmer_config['lower'], kmer_config['upper']
     removed, initial = 0, len(n2s_ghost)
-    for nid, seq in n2s_ghost.items():
+    for nid, seq in tqdm(n2s_ghost.items(), ncols=120):
         kmer_list = [seq[i:i+k] for i in range(len(seq)-k+1)]
         missed = 0
         for c_kmer in kmer_list:
-            if c_kmer not in kmers: c_kmer = str(Seq.Seq(c_kmer).reverse_complement())
-            if c_kmer not in kmers: # if it is still not in kmers, that means it was filtered out due to missing solid threshold
+            if c_kmer in KMER_COV_MEMO:
+                freq = KMER_COV_MEMO[c_kmer]
+            else:
+                freq = get_kmer_freq(jf_path, c_kmer)
+                KMER_COV_MEMO[c_kmer] = freq
+
+            if freq <= lower or freq >= upper:
                 missed += 1
 
         if missed > threshold*len(kmer_list):
@@ -274,20 +286,7 @@ def deduplicate(adj_list, new_walks, old_walks):
     print("Final number of edges:", sum(len(x) for x in adj_list.adj_list.values()))
     return adj_list
 
-def filter_edges(adj_list, ol_len_cutoff, ol_sim_cutoff):
-    new_adj_list = AdjList()
-    n_removed = 0
-    for edges in adj_list.adj_list.values():
-        for e in edges:
-            if e.ol_len < ol_len_cutoff or e.ol_sim < ol_sim_cutoff: 
-                n_removed += 1
-                continue
-            new_adj_list.add_edge(e)
-
-    print("Number of edges removed:", n_removed)
-    return new_adj_list
-
-def get_best_walk_coverage(adj_list, start_node, telo_ref, n2s, kmers, kmers_config, graph, old_walks, new_walks, edges_full, reverse, visited_init=None):
+def get_best_walk_coverage(adj_list, start_node, telo_ref, n2s, kmers_config, jf_path, graph, old_walks, new_walks, edges_full, reverse, visited_init=None):
     """
     Given a start node, recursively and greedily chooses the next sequence node (performs 1 step lookahead to skip over the ghost) which has the lowest coverage difference.
     """
@@ -352,7 +351,7 @@ def get_best_walk_coverage(adj_list, start_node, telo_ref, n2s, kmers, kmers_con
                 if check_telo_compatibility(walk_telo, curr_telo) < 0: continue
                 new_walk = new_walks[s.new_dst_nid][-1] if reverse else new_walks[s.new_dst_nid][0]
                 s2 = get_surrounding_seq(new_walk, s.old_dst_nid)
-                diff, cov_check, is_invalid = check_connection_cov(s1, s2, kmers, kmers_config['k'], kmers_config['diff'])
+                diff, cov_check, is_invalid = check_connection_cov(s1, s2, kmers_config, jf_path)
                 if not is_invalid and not cov_check: continue
                 if diff < best_diff:
                     best_diff = diff
@@ -372,10 +371,10 @@ def get_best_walk_coverage(adj_list, start_node, telo_ref, n2s, kmers, kmers_con
 
     return walk, n_key_nodes, is_t2t
 
-def get_walks(adj_list, telo_ref, old_walks, new_walks, n2s, kmers, kmers_config, old_graph, edges_full):
+def get_walks(adj_list, telo_ref, old_walks, new_walks, n2s, kmers_config, jf_path, old_graph, edges_full):
 
     def get_best_walk(adj_list, start_node, reverse, visited_init=None):
-        return get_best_walk_coverage(adj_list, start_node, telo_ref, n2s, kmers, kmers_config, old_graph, old_walks, new_walks, edges_full, reverse, visited_init=visited_init)
+        return get_best_walk_coverage(adj_list, start_node, telo_ref, n2s, kmers_config, jf_path, old_graph, old_walks, new_walks, edges_full, reverse, visited_init=visited_init)
         
     # Initialise reverse adj list
     new_new_walks = []
@@ -480,8 +479,8 @@ def decompress_walks(new_new_walks, new_walks):
 
     return res
                 
-def iterate_postprocessing(aux, hyperparams, paths, new_walks, telo_ref, n2s_ghost, edges_full, filtering_config):
-    old_walks, n2s, r2n, paf_data, hifi_r2s, ul_r2s, kmers, old_graph = aux['walks'], aux['n2s'], aux['r2n'], aux['paf_data'], aux['hifi_r2s'], aux['ul_r2s'], aux['kmers'], aux['old_graph']
+def iterate_postprocessing(aux, hyperparams, paths, new_walks, telo_ref, n2s_ghost, edges_full):
+    old_walks, n2s, r2n, paf_data, hifi_r2s, ul_r2s, old_graph = aux['walks'], aux['n2s'], aux['r2n'], aux['paf_data'], aux['hifi_r2s'], aux['ul_r2s'], aux['old_graph']
     adj_lists, n2nns = [], []
 
     # print("Iteration 0 walks:", [w for w in new_walks if len(w)>1])
@@ -510,8 +509,8 @@ def iterate_postprocessing(aux, hyperparams, paths, new_walks, telo_ref, n2s_gho
             adj_lists.append(None)
             continue
 
-        new_adj_list = filter_edges(new_adj_list, filtering_config['ol_len_cutoff'], filtering_config['ol_sim_cutoff'])
-        new_adj_list = remove_repetitive_ghosts(new_adj_list, curr_n2s_ghost, aux['kmers'], hyperparams['kmers']['k'], hyperparams['remove_repetitive_ghosts'])
+        jf_path = paths['hifiasm']+f"{hyperparams['kmers']['k']}mers.jf"
+        new_adj_list = remove_repetitive_ghosts(new_adj_list, curr_n2s_ghost, hyperparams['kmers'], hyperparams['remove_repetitive_ghosts'], jf_path)
         new_adj_list = deduplicate(new_adj_list, new_walks, old_walks)
         adj_lists.append(new_adj_list)
 
@@ -521,8 +520,8 @@ def iterate_postprocessing(aux, hyperparams, paths, new_walks, telo_ref, n2s_gho
             old_walks=old_walks,
             new_walks=new_walks,
             n2s=n2s,
-            kmers=kmers,
             kmers_config=hyperparams['kmers'],
+            jf_path=jf_path,
             old_graph=old_graph,
             edges_full=edges_full
         )

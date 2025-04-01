@@ -2,8 +2,7 @@ from datetime import datetime
 import dgl, gc, os, pickle, subprocess, torch
 from pyfaidx import Fasta
 
-from misc.utils import filter_out_kmers, pyg_to_dgl, timedelta_to_str
-from .fasta_util import parse_kmer_fasta
+from misc.utils import pyg_to_dgl, timedelta_to_str
 from .gfa_util import preprocess_gfa
 from .paf_util import parse_paf
 
@@ -51,13 +50,6 @@ def run_preprocessing(config):
         else:
             command = f"jellyfish count -m {k} -s 100M -t 10 -o {k}mers.jf -C {config['genome_info'][genome]['paths']['ec_reads']}"
             subprocess.run(command, shell=True, cwd=hifiasm_path)
-            command = f"jellyfish dump {k}mers.jf > {k}mers.fa"
-            subprocess.run(command, shell=True, cwd=hifiasm_path)
-            kmers = parse_kmer_fasta(hifiasm_path+f"{k}mers.fa")
-            kmers_filtered = filter_out_kmers(kmers, hifiasm_path+f"{k}mers")
-            with open(hifiasm_path+f"{k}mers.pkl", "wb") as p:
-                pickle.dump(kmers_filtered, p)
-            os.remove(hifiasm_path+f"{k}mers.fa")
 
         print(f"Run finished! (Time: {timedelta_to_str(datetime.now() - time_start)})")
 

@@ -7,7 +7,6 @@ import networkx as nx
 import numpy as np
 import pickle
 from scipy.signal import argrelextrema
-import seaborn as sns
 
 def timedelta_to_str(delta):
     hours, remainder = divmod(delta.seconds, 3600)
@@ -205,13 +204,24 @@ def analyse_graph(adj_list, telo_ref, walks, save_path, iteration):
 
     return
 
-def filter_out_kmers(d, save_path_wo_ext):
+def get_kmer_freq(jf_path, kmer):
+    cmd = f"jellyfish query {jf_path} {kmer}"
+    res = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    return int(res.stdout.split()[1])
+
+def get_kmer_solid_thresholds(save_path_wo_ext):
     """
     Filters out kmers by frequency and plots distribution + threshold graph.
     Lower threshold is the first local minima from the left, upper threshold is the first local minima after the average.
     Method from the paper "Constructing telomere-to-telomere diploid genome by polishing haploid nanopore-based assembly"
     """
-    kmer_freqs = list(d.values())
+    cmd = f"jellyfish histo {save_path_wo_ext}.jf"
+    res = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    res = res.stdout.split("\n")
+    kmer_freqs = []
+    for s in res[:-1]:
+        split = [int(x) for x in s.split()]
+        kmer_freqs.extend([split[0]]*split[1])
     cutoff = np.percentile(kmer_freqs, 99.5)
     kmer_freqs = [i for i in kmer_freqs if i <= cutoff]
 
@@ -227,11 +237,9 @@ def filter_out_kmers(d, save_path_wo_ext):
     lower, upper = minima_inds[0]+1, None
     for m in minima_inds:
         if m > nearest_average-1:
-            upper = m
+            upper = m+1
             break
     if upper is None: upper = len(values)
-
-    filtered_d = {k:v for k,v in d.items() if lower <= v <= upper}
 
     plt.figure(figsize=(10, 5))
     x_indices = range(1, len(values) + 1)
@@ -245,19 +253,7 @@ def filter_out_kmers(d, save_path_wo_ext):
     plt.savefig(save_path_wo_ext+".png")
     plt.clf()
 
-    return filtered_d
-
-def plot_histo(vals, save_path, verts=None):
-    sns.histplot(vals, bins=100, kde=True)  # Histogram with density curve
-
-    if verts:
-        for name, value in verts.items():
-            plt.axvline(x=value, linestyle='--', label=name)
-
-    plt.savefig(save_path)
-    plt.clf()
-
-    return
+    return lower, upper
 
 def print_ascii():
     """hehe"""
