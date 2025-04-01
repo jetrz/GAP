@@ -1,4 +1,5 @@
 from copy import deepcopy
+from multiprocessing import Pool
 from tqdm import tqdm
 
 from misc.utils import analyse_graph, get_kmer_freq, get_seqs
@@ -62,25 +63,34 @@ def rename_ghosts(iteration, new_walks, n2s_ghost, n_old_walks):
 
     return new_walks, new_n2s_ghost
 
-def remove_repetitive_ghosts(adj_list, n2s_ghost, kmer_config, threshold, jf_path):
-    k, lower, upper = kmer_config['k'], kmer_config['lower'], kmer_config['upper']
+def parse_ghost_for_repetitive_wrapper(args):
+    return parse_ghost_for_repetitive(*args)
+
+def parse_ghost_for_repetitive(nid, seq, kmers_config, threshold, jf_path):
+    k, lower, upper = kmers_config['k'], kmers_config['lower'], kmers_config['upper']
+    kmer_list = [seq[i:i+k] for i in range(len(seq)-k+1)]
+    missed = 0
+    for c_kmer in kmer_list:
+        if c_kmer in KMER_COV_MEMO:
+            freq = KMER_COV_MEMO[c_kmer]
+        else:
+            freq = get_kmer_freq(jf_path, c_kmer)
+            KMER_COV_MEMO[c_kmer] = freq
+
+        if freq <= lower or freq >= upper:
+            missed += 1
+
+    return nid, missed > threshold*len(kmer_list)
+
+def remove_repetitive_ghosts(adj_list, n2s_ghost, kmers_config, threshold, jf_path):
     removed, initial = 0, len(n2s_ghost)
-    for nid, seq in tqdm(n2s_ghost.items(), ncols=120):
-        kmer_list = [seq[i:i+k] for i in range(len(seq)-k+1)]
-        missed = 0
-        for c_kmer in kmer_list:
-            if c_kmer in KMER_COV_MEMO:
-                freq = KMER_COV_MEMO[c_kmer]
-            else:
-                freq = get_kmer_freq(jf_path, c_kmer)
-                KMER_COV_MEMO[c_kmer] = freq
-
-            if freq <= lower or freq >= upper:
-                missed += 1
-
-        if missed > threshold*len(kmer_list):
-            adj_list.remove_node(nid)
-            removed += 1
+    full_args = [(nid, seq, kmers_config, threshold, jf_path) for nid, seq in n2s_ghost.items()]
+    with Pool(40) as pool:
+        results = pool.imap_unordered(parse_ghost_for_repetitive_wrapper, full_args)
+        for nid, is_repetitive in tqdm(results, ncols=120, total=len(n2s_ghost)):
+            if is_repetitive:
+                adj_list.remove_node(nid)
+                removed += 1
 
     print(f"Repetitive ghosts removed: {removed}/{initial}")
     return adj_list
