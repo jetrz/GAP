@@ -112,7 +112,6 @@ def t2t_metrics(save_path, t2t_chr_path, ref_path, motif):
             os.remove(f)
 
     cmd = f"{t2t_chr_path} -a {save_path}0_assembly.fasta -r {ref_path} -m {motif} -t 10"
-    # print("Command:", cmd)
     subprocess.run(cmd, shell=True, cwd=save_path[:-1], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     aligned_path = f"{save_path}T2T_sequences_alignment_T2T.txt"
     with open(aligned_path, 'r') as f:
@@ -137,7 +136,6 @@ def get_seqs(id, hifi_r2s, ul_r2s):
         raise ValueError("Read not present in seq dataset FASTAs!")
     
 def analyse_graph(adj_list, telo_ref, walks, save_path, iteration):
-    # For debugging
     nxg = nx.DiGraph()
     labels = {}
     for source, neighs in adj_list.adj_list.items():

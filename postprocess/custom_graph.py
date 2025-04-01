@@ -11,7 +11,7 @@ class Edge():
         self.ol_sim = ol_sim
 
     def __str__(self):
-        return f"New NIDs: {self.new_src_nid}->{self.new_dst_nid}, Old NIDs:{self.old_src_nid}->{self.old_dst_nid}"
+        return f"New NIDs: {self.new_src_nid}->{self.new_dst_nid} | Old NIDs:{self.old_src_nid}->{self.old_dst_nid} | OL Len: {self.ol_len} | OL Sim: {self.ol_sim} | Prefix Len: {self.prefix_len}"
 
 class AdjList():
     """
