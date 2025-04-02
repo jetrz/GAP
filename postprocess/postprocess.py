@@ -232,7 +232,6 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, edges
     print(f"Adding edges between existing nodes...")
     valid_src, valid_dst, prefix_lens, ol_lens, ol_sims, ghost_data = paf_data['ghost_edges']['valid_src'], paf_data['ghost_edges']['valid_dst'], paf_data['ghost_edges']['prefix_len'], paf_data['ghost_edges']['ol_len'], paf_data['ghost_edges']['ol_similarity'], paf_data['ghost_nodes']
     added_edges_count = 0
-    ngeid, ngneid, ngos, ngol, ngpl = [[],[]], [[],[]], [], [], []
     for i in range(len(valid_src)):
         src, dst, prefix_len, ol_len, ol_sim = valid_src[i], valid_dst[i], prefix_lens[i], ol_lens[i], ol_sims[i]
         if src in n2n_end and dst in n2n_start:
@@ -562,6 +561,9 @@ def parse_ghost_for_repetitive(nid, seq, kmers_config, threshold, jf_path):
     return nid, missed > threshold*len(kmer_list)
 
 def remove_repetitive_ghosts(adj_list, n2s_ghost, kmers_config, jf_path):
+    """
+    Removes ghost nodes that are flagged as repetitive. (Threshold set by rep_threshold hyperparam). Uses multiprocessing.
+    """
     threshold = kmers_config['rep_threshold']
     removed, initial = 0, len(n2s_ghost)
     full_args = [(nid, seq, kmers_config, threshold, jf_path) for nid, seq in n2s_ghost.items()]
@@ -900,7 +902,7 @@ def get_best_walk_coverage_lookahead(adj_list, start_node, n_old_walks, telo_ref
 
 def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, n2s_ghost, kmers_config, jf_path, penalty=None, visited_init=None):
     """
-    Given a start node, recursively and greedily chooses the next sequence node which has the lowest coverage difference.
+    Given a start node, recursively and greedily chooses the next node which has the lowest coverage difference.
     Note: dfs penalty is currently not being used, but leaving it here for possible future extension. the 0 returned by this function represents the penalty of the best walk.
     """
     def get_telo_info(node):
@@ -960,6 +962,7 @@ def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, n2s
                 terminate = True
                 s1 = n2s_ghost[c_node] if c_node >= n_old_walks else n2s[n.old_src_nid]
                 s2 = n2s[n.old_dst_nid] if c_node >= n_old_walks else n2s_ghost[n.new_dst_nid]
+                if n.ol_len + 100 + kmers_config['k'] > len(s1) or n.ol_len + 100 + kmers_config['k'] > len(s2): continue # there must be at least 100 kmers to calculate the coverage
                 cov_diff, cov_check, is_invalid = check_connection_cov(s1[:n.ol_len], s2[n.ol_len:], kmers_config, jf_path)
                 if not is_invalid and not cov_check: continue
                 if cov_diff < best_diff:
@@ -971,6 +974,7 @@ def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, n2s
                     terminate = False
                     s1 = n2s_ghost[c_node] if c_node >= n_old_walks else n2s[n.old_src_nid]
                     s2 = n2s[n.old_dst_nid] if c_node >= n_old_walks else n2s_ghost[n.new_dst_nid]
+                    if n.ol_len + 100 + kmers_config['k'] > len(s1) or n.ol_len + 100 + kmers_config['k'] > len(s2): continue # there must be at least 100 kmers to calculate the coverage
                     cov_diff, cov_check, is_invalid = check_connection_cov(s1[:n.ol_len], s2[n.ol_len:], kmers_config, jf_path)
                     if not is_invalid and not cov_check: continue
                     if cov_diff < best_diff:
@@ -1101,6 +1105,9 @@ def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s, n2s, n2s_ghost, km
     return new_walks
 
 def rename_ghosts(iteration, new_walks, n2s_ghost, n_old_walks):
+    """
+    Renames ghosts to add the iteration label. E.g. 423 -> '1-423'
+    """
     new_n2s_ghost = {}
     for nw in new_walks:
         for i, n in enumerate(nw):
