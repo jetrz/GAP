@@ -204,11 +204,6 @@ def analyse_graph(adj_list, telo_ref, walks, save_path, iteration):
 
     return
 
-def get_kmer_freq(jf_path, kmer):
-    cmd = f"jellyfish query {jf_path} {kmer}"
-    res = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    return int(res.stdout.split()[1])
-
 def get_kmer_freqs(jf_path, kmer_list):
     freqs = {}
     batch_size = 1000
@@ -267,7 +262,7 @@ def get_kmer_solid_thresholds(save_path_wo_ext):
     plt.savefig(save_path_wo_ext+".png")
     plt.clf()
 
-    return lower, upper
+    return int(lower), int(upper)
 
 def print_ascii():
     """hehe"""

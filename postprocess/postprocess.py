@@ -535,7 +535,7 @@ def check_connection_cov(s1, s2, kmers_config, jf_path):
             else:
                 total_cov += f
             
-        if missed > 0.8*len(kmer_list): # the sequence only contained invalid kmers
+        if missed > kmers_config['rep_threshold']*len(kmer_list): # the sequence only contained invalid kmers
             return -99999
         else:
             return total_cov/(len(kmer_list)-missed)
@@ -561,7 +561,8 @@ def parse_ghost_for_repetitive(nid, seq, kmers_config, threshold, jf_path):
 
     return nid, missed > threshold*len(kmer_list)
 
-def remove_repetitive_ghosts(adj_list, n2s_ghost, kmers_config, threshold, jf_path):
+def remove_repetitive_ghosts(adj_list, n2s_ghost, kmers_config, jf_path):
+    threshold = kmers_config['rep_threshold']
     removed, initial = 0, len(n2s_ghost)
     full_args = [(nid, seq, kmers_config, threshold, jf_path) for nid, seq in n2s_ghost.items()]
     with Pool(40) as pool:
@@ -810,7 +811,7 @@ def get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, n2s, 
 
     return walk, n_key_nodes, 0, is_t2t
 
-def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, kmers_config, jf_path, graph, old_walks, edges_full, penalty=None, visited_init=None):
+def get_best_walk_coverage_lookahead(adj_list, start_node, n_old_walks, telo_ref, n2s, kmers_config, jf_path, graph, old_walks, edges_full, penalty=None, visited_init=None):
     """
     Given a start node, recursively and greedily chooses the next sequence node (performs 1 step lookahead to skip over the ghost) which has the lowest coverage difference.
     Note: dfs penalty is currently not being used, but leaving it here for possible future extension. the 0 returned by this function represents the penalty of the best walk.
@@ -863,21 +864,26 @@ def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, kme
         
         # performs 1-hop lookahead
         best_diff, best_g_neigh, best_s_neigh = float('inf'), None, None
-        for g in ghost_neighs:
-            if g.new_dst_nid in visited: continue
-            seq_neighs = adj_list.get_neighbours(g.new_dst_nid) # get all neighbours of n, which is a ghost
-            s1 = get_surrounding_seq(g.new_src_nid, g.old_src_nid)
-            for s in seq_neighs:
-                if s.new_dst_nid in visited: continue
-                curr_telo = get_telo_info(s.new_dst_nid)
-                if check_telo_compatibility(walk_telo, curr_telo) < 0: continue
-                s2 = get_surrounding_seq(s.new_dst_nid, s.old_dst_nid)
-                diff, cov_check, is_invalid = check_connection_cov(s1, s2, kmers_config, jf_path)
-                if not is_invalid and not cov_check: continue
-                if diff < best_diff:
-                    best_diff = diff
-                    best_g_neigh = g.new_dst_nid
-                    best_s_neigh = s.new_dst_nid
+        # if difference is not being checked, and there is only one neighbour, select it immediately
+        if kmers_config['diff'] >= 1 and len(ghost_neighs) == 1 and len(adj_list.get_neighbours(ghost_neighs[0].new_dst_nid)) == 1:
+            best_g_neigh = ghost_neighs[0].new_dst_nid
+            best_s_neigh = adj_list.get_neighbours(ghost_neighs[0].new_dst_nid)[0].new_dst_nid
+        else:
+            for g in ghost_neighs:
+                if g.new_dst_nid in visited: continue
+                seq_neighs = adj_list.get_neighbours(g.new_dst_nid) # get all neighbours of n, which is a ghost
+                s1 = get_surrounding_seq(g.new_src_nid, g.old_src_nid)
+                for s in seq_neighs:
+                    if s.new_dst_nid in visited: continue
+                    curr_telo = get_telo_info(s.new_dst_nid)
+                    if check_telo_compatibility(walk_telo, curr_telo) < 0: continue
+                    s2 = get_surrounding_seq(s.new_dst_nid, s.old_dst_nid)
+                    diff, cov_check, is_invalid = check_connection_cov(s1, s2, kmers_config, jf_path)
+                    if not is_invalid and not cov_check: continue
+                    if diff < best_diff:
+                        best_diff = diff
+                        best_g_neigh = g.new_dst_nid
+                        best_s_neigh = s.new_dst_nid
 
         if best_g_neigh is None: break
         walk.append(best_g_neigh); walk.append(best_s_neigh)
@@ -892,7 +898,98 @@ def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, kme
 
     return walk, n_key_nodes, 0, is_t2t
 
-def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s, n2s, kmers_config, jf_path, old_graph, old_walks, edges_full, decoding='default'):
+def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, n2s_ghost, kmers_config, jf_path, penalty=None, visited_init=None):
+    """
+    Given a start node, recursively and greedily chooses the next sequence node which has the lowest coverage difference.
+    Note: dfs penalty is currently not being used, but leaving it here for possible future extension. the 0 returned by this function represents the penalty of the best walk.
+    """
+    def get_telo_info(node):
+        if node >= n_old_walks: return None
+
+        if telo_ref[node]['start']:
+            return ('start', telo_ref[node]['start'])
+        elif telo_ref[node]['end']:
+            return ('end', telo_ref[node]['end'])
+        else:
+            return None
+
+    def check_telo_compatibility(t1, t2):
+        if t2 is None:
+            return 0
+        elif t1 is None and t2 is not None:
+            return 1
+        elif t1[0] != t2[0] and t1[1] != t2[1]: # The position and motif var must be different.
+            return 1
+        else:
+            return -1
+
+    if visited_init is None: visited_init = set()
+    walk, n_key_nodes, visited, terminate = [start_node], 1, visited_init, False
+    visited.add(start_node)
+    c_node = start_node
+    walk_telo = get_telo_info(start_node)
+
+    while True:
+        neighs = adj_list.get_neighbours(c_node)
+        c_neighs, c_neighs_terminate = [], []
+
+        for n in neighs:
+            if n.new_dst_nid in visited: continue
+            curr_telo = get_telo_info(n.new_dst_nid)
+            telo_compatibility = check_telo_compatibility(walk_telo, curr_telo)
+            if telo_compatibility < 0: 
+                continue
+            elif telo_compatibility > 0:
+                c_neighs_terminate.append(n)
+            else:
+                c_neighs.append(n)
+
+        if not c_neighs and not c_neighs_terminate: break
+
+        best_diff, best_neigh = float('inf'), None
+        # if difference is not being checked, and there is only one neighbour, select it immediately
+        if kmers_config['diff'] >= 1 and len(c_neighs)+len(c_neighs_terminate) == 1:
+            if c_neighs_terminate:
+                best_neigh = c_neighs_terminate[0].new_dst_nid
+                terminate = True
+            else:
+                best_neigh = c_neighs[0].new_dst_nid
+                terminate = False
+        else:
+            for n in c_neighs_terminate:
+                terminate = True
+                s1 = n2s_ghost[c_node] if c_node >= n_old_walks else n2s[n.old_src_nid]
+                s2 = n2s[n.old_dst_nid] if c_node >= n_old_walks else n2s_ghost[n.new_dst_nid]
+                cov_diff, cov_check, is_invalid = check_connection_cov(s1[:n.ol_len], s2[n.ol_len:], kmers_config, jf_path)
+                if not is_invalid and not cov_check: continue
+                if cov_diff < best_diff:
+                    best_diff = cov_diff
+                    best_neigh = n.new_dst_nid
+
+            if best_neigh is None:
+                for n in c_neighs:
+                    terminate = False
+                    s1 = n2s_ghost[c_node] if c_node >= n_old_walks else n2s[n.old_src_nid]
+                    s2 = n2s[n.old_dst_nid] if c_node >= n_old_walks else n2s_ghost[n.new_dst_nid]
+                    cov_diff, cov_check, is_invalid = check_connection_cov(s1[:n.ol_len], s2[n.ol_len:], kmers_config, jf_path)
+                    if not is_invalid and not cov_check: continue
+                    if cov_diff < best_diff:
+                        best_diff = cov_diff
+                        best_neigh = n.new_dst_nid
+
+        if best_neigh is None: break
+        walk.append(best_neigh)
+        visited.add(best_neigh)
+        if best_neigh < n_old_walks: n_key_nodes += 1
+        c_node = best_neigh
+        if terminate: break
+
+    if walk[-1] >= n_old_walks: walk.pop()
+    is_t2t = walk_telo and walk[-1] < n_old_walks and ((telo_ref[walk[-1]]['start'] and telo_ref[walk[-1]]['start'] != walk_telo[1]) or (telo_ref[walk[-1]]['end'] and telo_ref[walk[-1]]['end'] != walk_telo[1]))
+
+    return walk, n_key_nodes, 0, is_t2t
+
+def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s, n2s, n2s_ghost, kmers_config, jf_path, old_graph, old_walks, edges_full, decoding='default'):
     """
     Creates the new walks, priotising key nodes with telomeres.
 
@@ -906,8 +1003,10 @@ def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s, n2s, kmers_config,
     def get_best_walk(adj_list, start_node, visited_init=None):
         if decoding == 'gnnome_score':
             return get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, n2s, kmers_config, jf_path, visited_init=visited_init)
+        elif decoding == 'coverage_lookahead':
+            return get_best_walk_coverage_lookahead(adj_list, start_node, n_old_walks, telo_ref, n2s, kmers_config, jf_path, old_graph, old_walks, edges_full, visited_init=visited_init)
         elif decoding == 'coverage':
-            return get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, kmers_config, jf_path, old_graph, old_walks, edges_full, visited_init=visited_init)
+            return get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, n2s_ghost, kmers_config, jf_path, visited_init=visited_init)
         else:
             return get_best_walk_default(adj_list, start_node, n_old_walks, telo_ref, dfs_penalty, visited_init=visited_init)
 
@@ -1135,7 +1234,7 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
     
     print(f"Removing repetitive ghosts... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     jf_path = paths['hifiasm']+f"{hyperparams['kmers']['k']}mers.jf"
-    adj_list = remove_repetitive_ghosts(adj_list, n2s_ghost, hyperparams['kmers'], hyperparams['remove_repetitive_ghosts'], jf_path)
+    adj_list = remove_repetitive_ghosts(adj_list, n2s_ghost, hyperparams['kmers'], jf_path)
 
     # Remove duplicate edges between nodes. If there are multiple connections between a walk and another node/walk, we choose the best one.
     # This could probably have been done while adding the edges in. However, to avoid confusion, i'm doing this separately.
@@ -1150,6 +1249,7 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
         dfs_penalty=hyperparams['dfs_penalty'],
         e2s=e2s,
         n2s=n2s,
+        n2s_ghost=n2s_ghost,
         kmers_config=hyperparams['kmers'],
         jf_path=jf_path,
         old_graph=old_graph,

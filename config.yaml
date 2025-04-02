@@ -23,17 +23,17 @@ run:
       # - 'fruitfly_ont'
   postprocessing:
     genomes:
-      - 'arab'
-      # - 'chicken'
-      # - 'mouse'
-      # - 'chm13'
-      # - 'maize'
-      # - 'hg002_d_20x_scaf_p'
-      # - 'hg002_d_20x_scaf_m'
-      # - 'bonobo_d_20x_scaf_p'
-      # - 'bonobo_d_20x_scaf_m'
-      # - 'gorilla_d_20x_scaf_p'
-      # - 'gorilla_d_20x_scaf_m'
+      # - 'arab'
+      - 'chicken'
+      - 'mouse'
+      - 'chm13'
+      - 'maize'
+      - 'hg002_d_20x_scaf_p'
+      - 'hg002_d_20x_scaf_m'
+      - 'bonobo_d_20x_scaf_p'
+      - 'bonobo_d_20x_scaf_m'
+      - 'gorilla_d_20x_scaf_p'
+      - 'gorilla_d_20x_scaf_m'
       # - 'fruitfly_ont'
       # - 'tomato_ont'
       # - 'arab_ont'
@@ -47,15 +47,15 @@ run:
 postprocessing:
   use_telomere_info : true
   dfs_penalty: null # None, 'ol_len' or 'ol_sim'
-  decoding: 'coverage' # 'default' or 'gnnome_score' or 'coverage'
+  decoding: 'coverage' # 'default' or 'gnnome_score' or 'coverage' or 'coverage_lookahead'
   iterations: 1
   walk_valid_p: [0.01] # ensure there are at least # iterations number of values
-  remove_repetitive_ghosts: 0.7 # removes ghost nodes that consist at least this % of non-solid kmers. 1 will remove no nodes, 0 will remove all
 
 misc:
   kmers:
     k: 21
     diff: 1 # range between 0 to 1 where 0 removes all edges, while 1 removes none. diff threshold calculated by abs(cov1-cov2) <= diff*max(cov1,cov2)
+    rep_threshold: 0.8 # threshold after which a sequence is considered to be from a repetitive region. 
   paths:
     model: '/home/stumanuel/GAP/misc/default_best.pt'
     seqtk: '/home/stumanuel/GitHub/seqtk/seqtk'

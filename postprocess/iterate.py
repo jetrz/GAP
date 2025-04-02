@@ -38,7 +38,7 @@ def check_connection_cov(s1, s2, kmers_config, jf_path):
             else:
                 total_cov += f
             
-        if missed > 0.8*len(kmer_list): # the sequence only contained invalid kmers
+        if missed > kmers_config['rep_threshold']*len(kmer_list): # the sequence only contained invalid kmers
             return -99999
         else:
             return total_cov/(len(kmer_list)-missed)
@@ -75,7 +75,8 @@ def parse_ghost_for_repetitive(nid, seq, kmers_config, threshold, jf_path):
 
     return nid, missed > threshold*len(kmer_list)
 
-def remove_repetitive_ghosts(adj_list, n2s_ghost, kmers_config, threshold, jf_path):
+def remove_repetitive_ghosts(adj_list, n2s_ghost, kmers_config, jf_path):
+    threshold = kmers_config['rep_threshold']
     removed, initial = 0, len(n2s_ghost)
     full_args = [(nid, seq, kmers_config, threshold, jf_path) for nid, seq in n2s_ghost.items()]
     with Pool(40) as pool:
@@ -513,7 +514,7 @@ def iterate_postprocessing(aux, hyperparams, paths, new_walks, telo_ref, n2s_gho
             continue
 
         jf_path = paths['hifiasm']+f"{hyperparams['kmers']['k']}mers.jf"
-        new_adj_list = remove_repetitive_ghosts(new_adj_list, curr_n2s_ghost, hyperparams['kmers'], hyperparams['remove_repetitive_ghosts'], jf_path)
+        new_adj_list = remove_repetitive_ghosts(new_adj_list, curr_n2s_ghost, hyperparams['kmers'], jf_path)
         new_adj_list = deduplicate(new_adj_list, new_walks, old_walks)
         adj_lists.append(new_adj_list)
 
