@@ -2,7 +2,7 @@ from copy import deepcopy
 from multiprocessing import Pool
 from tqdm import tqdm
 
-from misc.utils import analyse_graph, get_kmer_freq, get_seqs
+from misc.utils import analyse_graph, get_kmer_freqs, get_seqs
 from .custom_graph import AdjList, Edge
 
 ########################### COPIED FROM postprocess.py TO PREVENT CIRCULAR IMPORT #############################
@@ -26,19 +26,17 @@ def check_connection_cov(s1, s2, kmers_config, jf_path):
 
     def get_avg_cov(seq):
         kmer_list = [seq[i:i+k] for i in range(len(seq)-k+1)]
+        new_kmer_list = [kmer for kmer in kmer_list if kmer not in KMER_COV_MEMO]
+        new_kmer_freqs = get_kmer_freqs(jf_path, new_kmer_list)
+        KMER_COV_MEMO.update(new_kmer_freqs)
 
         total_cov, missed = 0, 0
-        for c_kmer in kmer_list:
-            if c_kmer in KMER_COV_MEMO:
-                freq = KMER_COV_MEMO[c_kmer]
-            else:
-                freq = get_kmer_freq(jf_path, c_kmer)
-                KMER_COV_MEMO[c_kmer] = freq
-
-            if freq <= lower or freq >= upper:
+        for kmer in kmer_list:
+            f = KMER_COV_MEMO[kmer]
+            if f <= lower or f >= upper:
                 missed += 1
             else:
-                total_cov += freq
+                total_cov += f
             
         if missed > 0.8*len(kmer_list): # the sequence only contained invalid kmers
             return -99999
@@ -69,16 +67,11 @@ def parse_ghost_for_repetitive_wrapper(args):
 def parse_ghost_for_repetitive(nid, seq, kmers_config, threshold, jf_path):
     k, lower, upper = kmers_config['k'], kmers_config['lower'], kmers_config['upper']
     kmer_list = [seq[i:i+k] for i in range(len(seq)-k+1)]
-    missed = 0
-    for c_kmer in kmer_list:
-        if c_kmer in KMER_COV_MEMO:
-            freq = KMER_COV_MEMO[c_kmer]
-        else:
-            freq = get_kmer_freq(jf_path, c_kmer)
-            KMER_COV_MEMO[c_kmer] = freq
+    new_kmer_list = [kmer for kmer in kmer_list if kmer not in KMER_COV_MEMO]
+    new_kmer_freqs = get_kmer_freqs(jf_path, new_kmer_list)
+    KMER_COV_MEMO.update(new_kmer_freqs)
 
-        if freq <= lower or freq >= upper:
-            missed += 1
+    missed = sum(1 for kmer in kmer_list if KMER_COV_MEMO[kmer] <= lower or KMER_COV_MEMO[kmer] >= upper)
 
     return nid, missed > threshold*len(kmer_list)
 

@@ -1,5 +1,5 @@
 import dgl, glob, os, random, subprocess, torch
-from Bio import SeqIO
+from Bio import Seq, SeqIO
 from collections import Counter
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -208,6 +208,20 @@ def get_kmer_freq(jf_path, kmer):
     cmd = f"jellyfish query {jf_path} {kmer}"
     res = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     return int(res.stdout.split()[1])
+
+def get_kmer_freqs(jf_path, kmer_list):
+    freqs = {}
+    batch_size = 1000
+    for i in range(0, len(kmer_list), batch_size):
+        batch = kmer_list[i:i+batch_size]
+        res = subprocess.run(["jellyfish", "query", jf_path] + batch, capture_output=True, text=True)
+        counts = res.stdout.splitlines()
+        for l in counts:
+            split = l.split()
+            freqs[split[0]] = int(split[1])
+            freqs[str(Seq.Seq(split[0]).reverse_complement())] = int(split[1])
+    
+    return freqs
 
 def get_kmer_solid_thresholds(save_path_wo_ext):
     """
