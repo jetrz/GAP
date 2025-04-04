@@ -47,9 +47,9 @@ run:
       # - 'gorilla_d_ont_20x_scaf_m'
   postprocessing:
     genomes:
-      - 'arab'
-      # - 'chicken'
-      # - 'mouse'
+      # - 'arab'
+      - 'chicken'
+      - 'mouse'
       # - 'chm13'
       # - 'maize'
       # - 'hg002_d_20x_scaf_p'
@@ -74,6 +74,7 @@ postprocessing:
   decoding: 'coverage' # 'default' or 'gnnome_score' or 'coverage' or 'coverage_lookahead'
   iterations: 1
   walk_valid_p: [0.01] # ensure there are at least # iterations number of values
+  hop: 1
 
 misc:
   kmers:

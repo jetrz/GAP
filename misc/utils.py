@@ -199,7 +199,7 @@ def analyse_graph(adj_list, telo_ref, walks, save_path, iteration):
             nxg.add_edge(n, w[i+1])
             new_labels[(n, w[i+1])] = labels[(n, w[i+1])]
 
-    border_widths = [3 if n in key_nodes else 1 for n in nxg.nodes()]
+    border_widths = [10 if n in key_nodes else 1 for n in nxg.nodes()]
     nx.draw(nxg, pos=pos, with_labels=True, node_color=colors, linewidths=border_widths, node_size=50, font_size=9)
     nx.draw_networkx_edge_labels(nxg, pos=pos, edge_labels=new_labels, font_size=7)
     legend_handles = [mpatches.Patch(color=color_map[key], label=legend[key]) for key in sorted(color_map)]
@@ -275,7 +275,7 @@ def get_all_kmer_freqs(jf_path, lower, upper):
     freqs = {}
     lines = iter(process.stdout)
     while True:
-        pair = list(itertools.islice(lines, 2))
+        pair = [s.strip() for s in itertools.islice(lines, 2)]
         if not pair: break
         freqs[pair[1]] = int(pair[0][1:])
 
