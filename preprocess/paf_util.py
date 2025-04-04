@@ -454,7 +454,7 @@ def parse_paf(paths, aux):
     
     next_rows, hop = [], 1
 
-    while len(curr_rows) > cutoff and hop <= 1: # to include data beyond the first hop, simply remove the "and hop <= 1"
+    while len(curr_rows) > cutoff:
         print(f"Starting run for Hop {hop}. nrows: {len(curr_rows)}, cutoff: {cutoff}")
         curr_ghost_info = {'+':defaultdict(create_list_dd), '-':defaultdict(create_list_dd)}
 

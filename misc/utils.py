@@ -1,4 +1,4 @@
-import dgl, glob, os, random, subprocess, torch
+import dgl, glob, itertools, os, random, subprocess, torch
 from Bio import Seq, SeqIO
 from collections import Counter
 import matplotlib.pyplot as plt
@@ -180,9 +180,12 @@ def analyse_graph(adj_list, telo_ref, walks, save_path, iteration):
     }
     colors = [color_map[c] for c in colors]
 
+    key_nodes = set(telo_ref.keys())
+
     pos = nx.spring_layout(nxg, seed=42)
     plt.figure(figsize=(20,20))
-    nx.draw(nxg, pos=pos, with_labels=True, node_color=colors, node_size=50, font_size=9)
+    border_widths = [3 if n in key_nodes else 1 for n in nxg.nodes()]
+    nx.draw(nxg, pos=pos, with_labels=True, node_color=colors, linewidths=border_widths, node_size=50, font_size=9)
     nx.draw_networkx_edge_labels(nxg, pos=pos, edge_labels=labels, font_size=7)
     legend_handles = [mpatches.Patch(color=color_map[key], label=legend[key]) for key in sorted(color_map)]
     plt.legend(handles=legend_handles, loc='best')
@@ -196,7 +199,8 @@ def analyse_graph(adj_list, telo_ref, walks, save_path, iteration):
             nxg.add_edge(n, w[i+1])
             new_labels[(n, w[i+1])] = labels[(n, w[i+1])]
 
-    nx.draw(nxg, pos=pos, with_labels=True, node_color=colors, node_size=50, font_size=9)
+    border_widths = [3 if n in key_nodes else 1 for n in nxg.nodes()]
+    nx.draw(nxg, pos=pos, with_labels=True, node_color=colors, linewidths=border_widths, node_size=50, font_size=9)
     nx.draw_networkx_edge_labels(nxg, pos=pos, edge_labels=new_labels, font_size=7)
     legend_handles = [mpatches.Patch(color=color_map[key], label=legend[key]) for key in sorted(color_map)]
     plt.legend(handles=legend_handles, loc='best')
@@ -263,6 +267,21 @@ def get_kmer_solid_thresholds(save_path_wo_ext):
     plt.clf()
 
     return int(lower), int(upper)
+
+def get_all_kmer_freqs(jf_path, lower, upper):
+    cmd = f"jellyfish dump {jf_path} -L {lower} -U {upper}"
+    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+
+    freqs = {}
+    lines = iter(process.stdout)
+    while True:
+        pair = list(itertools.islice(lines, 2))
+        if not pair: break
+        freqs[pair[1]] = int(pair[0][1:])
+
+    process.wait()
+
+    return freqs
 
 def print_ascii():
     """hehe"""

@@ -48,6 +48,17 @@ class AdjList():
             if new_neighbours: new_adj_list[new_src_nid] = new_neighbours
         self.adj_list = new_adj_list
 
+    def remove_nodes(self, n_ids):
+        n_ids = set(n_ids)
+        for c_nid in n_ids:
+            if c_nid in self.adj_list: del self.adj_list[c_nid]
+
+        new_adj_list = defaultdict(set)
+        for new_src_nid, neighbours in self.adj_list.items():
+            new_neighbours = set(e for e in neighbours if e.new_dst_nid not in n_ids)
+            if new_neighbours: new_adj_list[new_src_nid] = new_neighbours
+        self.adj_list = new_adj_list 
+
     def get_neighbours(self, n_id):
         return self.adj_list.get(n_id, [])
     

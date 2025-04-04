@@ -1,19 +1,15 @@
-import dgl, os, pickle, random, subprocess, torch
+import dgl, os, pickle, random, subprocess
 from Bio import Seq, SeqIO
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
-from multiprocessing import Pool
 from pyfaidx import Fasta
 from tqdm import tqdm
 
 from .custom_graph import AdjList, Edge
-from .iterate import iterate_postprocessing
-from generate_baseline.gnnome_decoding import preprocess_graph
-from generate_baseline.SymGatedGCN import SymGatedGCNModel
-from misc.utils import analyse_graph, asm_metrics, get_kmer_freqs, get_kmer_solid_thresholds, get_seqs, timedelta_to_str, yak_metrics, t2t_metrics
+from misc.utils import analyse_graph, asm_metrics, get_all_kmer_freqs, get_kmer_solid_thresholds, get_seqs, timedelta_to_str, yak_metrics, t2t_metrics
 
-KMER_COV_MEMO, SEQ_COV_MEMO = {}, {} # memoises the coverage for each kmer, and the differences between two seqs respectively
+SEQ_COV_MEMO = {} # memoises the coverage for each kmer, and the differences between two seqs respectively
 
 def chop_walks_seqtk(old_walks, n2s, graph, edges_full, rep1, rep2, seqtk_path):
     """
@@ -163,7 +159,7 @@ def chop_walks_seqtk(old_walks, n2s, graph, edges_full, rep1, rep2, seqtk_path):
 
     return new_walks, telo_ref
 
-def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, edges_full, walk_valid_p, gnnome_config, model_path):
+def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, walk_valid_p):
     """
     Adds nodes and edges from the PAF and graph.
 
@@ -179,7 +175,6 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, edges
 
     # Only the first and last walk_valid_p% of nodes in a walk can be connected. Also initialises nodes from walks
     n2n_start, n2n_end = {}, {} # n2n maps old n_id to new n_id, for the start and ends of the walks respectively
-    walk_ids = [] # all n_ids that belong to walks
     nodes_in_old_walks = set()
     for walk in old_walks:
         nodes_in_old_walks.update(walk)
@@ -195,70 +190,15 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, edges
             for n in last_part:
                 n2n_end[n] = n_id
 
-        walk_ids.append(n_id)
         n_id += 1
 
-    print("Recreating new graph...")
-    new_graph = dgl.DGLGraph()
-    new_old_nids = {}
-    ngrl = [] # new graph read length
-    for i, node in enumerate(nodes_in_old_walks):
-        new_old_nids[node] = i
-        ngrl.append(old_graph.ndata['read_length'][node])
-    new_graph.add_nodes(
-        len(nodes_in_old_walks),
-        data = {
-            'read_length' : torch.tensor(ngrl)
-        }
-    )
-
-    ngeid, ngneid, ngos, ngol, ngpl = [[],[]], [[],[]], [], [], [] # new graph edge index, new graph new edge index, new graph ol sim, new graph ol len, new graph prefix len
-    for wid, walk in enumerate(old_walks):
-        for i, n in enumerate(walk[:-1]):
-            next_node = walk[i+1]
-            ngeid[0].append(new_old_nids[n]); ngeid[1].append(new_old_nids[next_node])
-            ngneid[0].append(wid); ngneid[1].append(wid)
-            old_eid = edges_full[(n, next_node)]
-            ngos.append(old_graph.edata['overlap_similarity'][old_eid])
-            ngol.append(old_graph.edata['overlap_length'][old_eid])
-            ngpl.append(old_graph.edata['prefix_length'][old_eid])
-    new_graph.add_edges(ngeid[0], ngeid[1])
-    new_graph.edata['new_edge_index_src'] = torch.tensor(ngneid[0], dtype=torch.int64)
-    new_graph.edata['new_edge_index_dst'] = torch.tensor(ngneid[1], dtype=torch.int64)
-    new_graph.edata['overlap_similarity'] = torch.tensor(ngos, dtype=torch.float32)
-    new_graph.edata['overlap_length'] = torch.tensor(ngol, dtype=torch.float32)
-    new_graph.edata['prefix_length'] = torch.tensor(ngpl, dtype=torch.float32)
-
-    print(f"Adding edges between existing nodes...")
-    valid_src, valid_dst, prefix_lens, ol_lens, ol_sims, ghost_data = paf_data['ghost_edges']['valid_src'], paf_data['ghost_edges']['valid_dst'], paf_data['ghost_edges']['prefix_len'], paf_data['ghost_edges']['ol_len'], paf_data['ghost_edges']['ol_similarity'], paf_data['ghost_nodes']
-    added_edges_count = 0
-    for i in range(len(valid_src)):
-        src, dst, prefix_len, ol_len, ol_sim = valid_src[i], valid_dst[i], prefix_lens[i], ol_lens[i], ol_sims[i]
-        if src in n2n_end and dst in n2n_start:
-            if n2n_end[src] == n2n_start[dst]: continue # ignore self-edges
-            added_edges_count += 1
-            adj_list.add_edge(Edge(
-                new_src_nid=n2n_end[src], 
-                new_dst_nid=n2n_start[dst], 
-                old_src_nid=src, 
-                old_dst_nid=dst, 
-                prefix_len=prefix_len, 
-                ol_len=ol_len, 
-                ol_sim=ol_sim
-            ))
-            ngeid[0].append(new_old_nids[src]); ngeid[1].append(new_old_nids[dst])
-            ngneid[0].append(n2n_end[src]); ngneid[1].append(n2n_start[dst])
-            ngos.append(ol_sim); ngol.append(ol_len); ngpl.append(prefix_len)
-    print("Added edges:", added_edges_count)
-
-    print(f"Adding ghost nodes...")
-    ngrl = []
-    dgl_nid = new_graph.num_nodes()
-    n2s_ghost = {}
-    ghost_data = ghost_data['hop_1'] # WE ONLY DO FOR 1-HOP FOR NOW
-    added_nodes_count = 0
+    ghost_data = paf_data['ghost_nodes']
+    print("Adding ghost nodes for Hop 1...")
+    n2s_ghost, r2n_ghost = {}, {}
+    added_nodes_h1_count, added_nodes_h2_count = 0, 0
+    c_ghost_data = ghost_data['hop_1']
     for orient in ['+', '-']:
-        for read_id, data in tqdm(ghost_data[orient].items(), ncols=120, desc=f"Orient: {orient}"):
+        for read_id, data in tqdm(c_ghost_data[orient].items(), ncols=120, desc=f"Orient: {orient}"):
             curr_out_neighbours, curr_in_neighbours = set(), set()
 
             for i, out_read_id in enumerate(data['outs']):
@@ -271,10 +211,6 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, edges
                 if in_n_id not in n2n_end: continue
                 curr_in_neighbours.add((in_n_id, data['prefix_len_ins'][i], data['ol_len_ins'][i], data['ol_similarity_ins'][i]))
 
-            # ghost nodes are only useful if they have both at least one outgoing and one incoming edge
-            if not curr_out_neighbours or not curr_in_neighbours: continue
-            if all(x==n2n_start[next(iter(curr_out_neighbours))[0]] for x in [n2n_start[n[0]] for n in curr_out_neighbours]+[n2n_end[n[0]] for n in curr_in_neighbours]): continue
-
             for n in curr_out_neighbours:
                 adj_list.add_edge(Edge(
                     new_src_nid=n_id,
@@ -285,9 +221,6 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, edges
                     ol_len=n[2],
                     ol_sim=n[3]
                 ))
-                ngeid[0].append(dgl_nid); ngeid[1].append(new_old_nids[n[0]])
-                ngneid[0].append(n_id); ngneid[1].append(n2n_start[n[0]]) 
-                ngos.append(n[3]); ngol.append(n[2]); ngpl.append(n[1])
             for n in curr_in_neighbours:
                 adj_list.add_edge(Edge(
                     new_src_nid=n2n_end[n[0]],
@@ -298,138 +231,118 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, n2s, old_graph, edges
                     ol_len=n[2],
                     ol_sim=n[3]
                 ))
-                ngeid[0].append(new_old_nids[n[0]]); ngeid[1].append(dgl_nid)
-                ngneid[0].append(n2n_end[n[0]]); ngneid[1].append(n_id)
-                ngos.append(n[3]); ngol.append(n[2]); ngpl.append(n[1])
 
             if orient == '+':
                 seq, _ = get_seqs(read_id, hifi_r2s, ul_r2s)
             else:
                 _, seq = get_seqs(read_id, hifi_r2s, ul_r2s)
             n2s_ghost[n_id] = seq
-            ngrl.append(data['read_len'])
-            n_id += 1; dgl_nid += 1; added_nodes_count += 1
+            r2n_ghost[read_id] = n_id
+            n_id += 1; added_nodes_h1_count += 1
 
-    print("Number of nodes added from PAF:", added_nodes_count)
+    print("Adding ghost nodes for Hop 2...")
+    c_ghost_data = ghost_data['hop_2'] if 'hop_2' in ghost_data else defaultdict(dict)
+    for orient in ['+', '-']:
+        for read_id, data in tqdm(c_ghost_data[orient].items(), ncols=120, desc=f"Orient: {orient}"):
+            curr_out_neighbours, curr_in_neighbours = set(), set()
 
-    print(f"Adding nodes from old graph...")
-    edges, edge_features = old_graph.edges(), old_graph.edata
-    graph_data = defaultdict(lambda: defaultdict(list))
-    for i in range(edges[0].shape[0]):
-        src_node = edges[0][i].item()  
-        dst_node = edges[1][i].item()  
-        ol_len = edge_features['overlap_length'][i].item()  
-        ol_sim = edge_features['overlap_similarity'][i].item()
-        prefix_len = edge_features['prefix_length'][i].item() 
+            for i, out_read_id in enumerate(data['outs']):
+                c_read_id = out_read_id[0]
+                if c_read_id in r2n_ghost: # This is a ghost node
+                    out_n_id = r2n_ghost[c_read_id]
+                    curr_out_neighbours.add((out_n_id, data['prefix_len_outs'][i], data['ol_len_outs'][i], data['ol_similarity_outs'][i]))
 
-        if src_node not in nodes_in_old_walks:
-            graph_data[src_node]['read_len'] = old_graph.ndata['read_length'][src_node]
-            graph_data[src_node]['outs'].append(dst_node)
-            graph_data[src_node]['ol_len_outs'].append(ol_len)
-            graph_data[src_node]['ol_sim_outs'].append(ol_sim)
-            graph_data[src_node]['prefix_len_outs'].append(prefix_len)
+            for i, in_read_id in enumerate(data['ins']):
+                c_read_id = in_read_id[0]
+                if c_read_id in r2n_ghost:
+                    in_n_id = r2n_ghost[c_read_id]
+                    curr_in_neighbours.add((in_n_id, data['prefix_len_ins'][i], data['ol_len_ins'][i], data['ol_similarity_ins'][i]))
 
-        if dst_node not in nodes_in_old_walks:
-            graph_data[dst_node]['read_len'] = old_graph.ndata['read_length'][dst_node]
-            graph_data[dst_node]['ins'].append(src_node)
-            graph_data[dst_node]['ol_len_ins'].append(ol_len)
-            graph_data[dst_node]['ol_sim_ins'].append(ol_sim)
-            graph_data[dst_node]['prefix_len_ins'].append(prefix_len)
+            # ghost nodes in outermost hop are only useful if they have both at least one outgoing and one incoming edge
+            if not curr_out_neighbours or not curr_in_neighbours: continue
 
-    # add to adj list where applicable
-    for old_node_id, data in graph_data.items():
-        curr_out_neighbours, curr_in_neighbours = set(), set()
+            for n in curr_out_neighbours:
+                adj_list.add_edge(Edge(
+                    new_src_nid=n_id,
+                    new_dst_nid=n[0],
+                    old_src_nid=None,
+                    old_dst_nid=None,
+                    prefix_len=n[1],
+                    ol_len=n[2],
+                    ol_sim=n[3]
+                ))
+            for n in curr_in_neighbours:
+                adj_list.add_edge(Edge(
+                    new_src_nid=n[0],
+                    new_dst_nid=n_id,
+                    old_src_nid=None,
+                    old_dst_nid=None,
+                    prefix_len=n[1],
+                    ol_len=n[2],
+                    ol_sim=n[3]
+                ))
 
-        for i, out_n_id in enumerate(data['outs']):
-            if out_n_id not in n2n_start: continue
-            curr_out_neighbours.add((out_n_id, data['prefix_len_outs'][i], data['ol_len_outs'][i], data['ol_sim_outs'][i]))
+            if orient == '+':
+                seq, _ = get_seqs(read_id, hifi_r2s, ul_r2s)
+            else:
+                _, seq = get_seqs(read_id, hifi_r2s, ul_r2s)
+            n2s_ghost[n_id] = seq
+            r2n_ghost[read_id] = n_id
+            n_id += 1; added_nodes_h2_count += 1
 
-        for i, in_n_id in enumerate(data['ins']):
-            if in_n_id not in n2n_end: continue
-            curr_in_neighbours.add((in_n_id, data['prefix_len_ins'][i], data['ol_len_ins'][i], data['ol_sim_ins'][i]))
+    print(f"Number of ghost nodes added - Hop 1: {added_nodes_h1_count}, Hop 2: {added_nodes_h2_count}")
 
-        if not curr_out_neighbours or not curr_in_neighbours: continue
-        if all(x==n2n_start[next(iter(curr_out_neighbours))[0]] for x in [n2n_start[n[0]] for n in curr_out_neighbours]+[n2n_end[n[0]] for n in curr_in_neighbours]): continue
-
-        for n in curr_out_neighbours:
+    print(f"Adding edges between existing nodes...")
+    valid_src, valid_dst, prefix_lens, ol_lens, ol_sims = paf_data['ghost_edges']['valid_src'], paf_data['ghost_edges']['valid_dst'], paf_data['ghost_edges']['prefix_len'], paf_data['ghost_edges']['ol_len'], paf_data['ghost_edges']['ol_similarity']
+    added_edges_h1_count, added_edges_h2_count = 0, 0
+    for i in tqdm(range(len(valid_src)), ncols=120):
+        src, dst, prefix_len, ol_len, ol_sim = valid_src[i], valid_dst[i], prefix_lens[i], ol_lens[i], ol_sims[i]
+        src_read_id, dst_read_id = src[0], dst[0]
+        if src_read_id in r2n and dst_read_id in r2n: # Edge is from 1-hop neighbourhood
+            src_n_id = r2n[src_read_id][0] if src[1] == '+' else r2n[src_read_id][1]
+            dst_n_id = r2n[dst_read_id][0] if dst[1] == '+' else r2n[dst_read_id][1]
+            if src_n_id not in n2n_end or dst_n_id not in n2n_start: continue
+            if n2n_end[src_n_id] == n2n_start[dst_n_id]: continue # ignore self-edges
             adj_list.add_edge(Edge(
-                new_src_nid=n_id,
-                new_dst_nid=n2n_start[n[0]],
-                old_src_nid=None,
-                old_dst_nid=n[0],
-                prefix_len=n[1],
-                ol_len=n[2],
-                ol_sim=n[3]
+                new_src_nid=n2n_end[src_n_id], 
+                new_dst_nid=n2n_start[dst_n_id], 
+                old_src_nid=src_n_id, 
+                old_dst_nid=dst_n_id, 
+                prefix_len=prefix_len, 
+                ol_len=ol_len, 
+                ol_sim=ol_sim
             ))
-            ngeid[0].append(dgl_nid); ngeid[1].append(new_old_nids[n[0]])
-            ngneid[0].append(n_id); ngneid[1].append(n2n_start[n[0]]) 
-            ngos.append(n[3]); ngol.append(n[2]); ngpl.append(n[1])
-        for n in curr_in_neighbours:
+            added_edges_h1_count += 1
+        elif src_read_id in r2n_ghost and dst_read_id in r2n_ghost:
+            src_n_id, dst_n_id = r2n_ghost[src_read_id], r2n_ghost[dst_read_id]
             adj_list.add_edge(Edge(
-                new_src_nid=n2n_end[n[0]],
-                new_dst_nid=n_id,
-                old_src_nid=n[0],
-                old_dst_nid=None,
-                prefix_len=n[1],
-                ol_len=n[2],
-                ol_sim=n[3]
+                new_src_nid=src_n_id, 
+                new_dst_nid=dst_n_id, 
+                old_src_nid=None, 
+                old_dst_nid=None, 
+                prefix_len=prefix_len, 
+                ol_len=ol_len, 
+                ol_sim=ol_sim
             ))
-            ngeid[0].append(new_old_nids[n[0]]); ngeid[1].append(dgl_nid)
-            ngneid[0].append(n2n_end[n[0]]); ngneid[1].append(n_id)
-            ngos.append(n[3]); ngol.append(n[2]); ngpl.append(n[1])
+            added_edges_h2_count += 1
 
-        seq = n2s[old_node_id]
-        n2s_ghost[n_id] = seq
-        n_id += 1
-        ngrl.append(data['read_len'])
-        dgl_nid += 1
-        added_nodes_count += 1
+    print(f"Number of edges between existing nodes added - Hop 1: {added_edges_h1_count}, Hop 2: {added_edges_h2_count}")
 
-    new_graph.add_nodes(
-        added_nodes_count,
-        data = {
-            'read_length' : torch.tensor(ngrl)
-        }
-    )
-    new_graph.add_edges(ngeid[0], ngeid[1], data={
-        'new_edge_index_src' : torch.tensor(ngneid[0], dtype=torch.int64),
-        'new_edge_index_dst' : torch.tensor(ngneid[1], dtype=torch.int64),
-        'overlap_similarity' : torch.tensor(ngos, dtype=torch.float32),
-        'overlap_length' : torch.tensor(ngol, dtype=torch.float32),
-        'prefix_length' : torch.tensor(ngpl, dtype=torch.float32)
-    })
+    print("Removing ghost nodes with no in or out neighbours...")
+    in_out_degs = { i:[0,0] for i in range(len(old_walks), n_id) }
+    for src_nid, neighbours in adj_list.adj_list.items():
+        for n in neighbours:
+            if n.new_dst_nid in in_out_degs: in_out_degs[n.new_dst_nid][0] += 1
+        if src_nid in in_out_degs: in_out_degs[src_nid][1] += len(neighbours)
+    to_remove = set(i for i in range(len(old_walks), n_id) if in_out_degs[i][0] <= 0 or in_out_degs[i][1] <= 0)
+    adj_list.remove_nodes(to_remove)
+    removed = len(to_remove)
+    print("Final number of nodes:", n_id-removed)
 
-    print("Getting ghost edge scores...")
-    new_graph, x, e = preprocess_graph(new_graph)
-    train_config = gnnome_config['training']
-    with torch.no_grad():
-        model = SymGatedGCNModel(
-            train_config['node_features'],
-            train_config['edge_features'],
-            train_config['hidden_features'],
-            train_config['hidden_edge_features'],
-            train_config['num_gnn_layers'],
-            train_config['hidden_edge_scores'],
-            train_config['batch_norm'],
-            dropout=train_config['dropout']
-        )
-        model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
-        model.eval()
-        edge_predictions, stop_predictions = model(new_graph, x, e)
-        new_graph.edata['score'] = edge_predictions.squeeze()
-    
-    e2s = {}
-    for eid in range(new_graph.num_edges()):
-        new_src_id, new_dst_id = new_graph.edata['new_edge_index_src'][eid], new_graph.edata['new_edge_index_dst'][eid]
-        if new_src_id == new_dst_id: continue # this is not a ghost edge
-        e2s[(new_src_id.item(), new_dst_id.item())] = new_graph.edata['score'][eid].item()
-        e2s[(new_dst_id.item(), new_src_id.item())] = new_graph.edata['score'][eid].item() # add the reverse as well cuz get_best_walk also searches in reverse
-
-    print("Final number of nodes:", n_id)
-    if added_edges_count or added_nodes_count:
-        return adj_list, walk_ids, n2s_ghost, e2s
+    if added_edges_h1_count or added_edges_h2_count or (added_nodes_h1_count+added_nodes_h2_count > removed):
+        return adj_list, n2s_ghost
     else:
-        return None, None, None, None
+        return None, None
 
 def deduplicate(adj_list, old_walks):
     """
@@ -506,7 +419,7 @@ def deduplicate(adj_list, old_walks):
     print("Final number of edges:", sum(len(x) for x in adj_list.adj_list.values()))
     return adj_list
 
-def check_connection_cov(s1, s2, kmers_config, jf_path):
+def check_connection_cov(s1, s2, kmers, kmers_config):
     """
     Validates an edge based on relative coverage, calculated using k-mer frequency. 
     If the difference in coverage between two sequences is too great, the edge is rejected.
@@ -518,21 +431,18 @@ def check_connection_cov(s1, s2, kmers_config, jf_path):
         cov_diff, check, is_invalid = SEQ_COV_MEMO[(s2, s1)]
         return cov_diff, check, is_invalid
 
-    k, diff, lower, upper = kmers_config['k'], kmers_config['diff'], kmers_config['lower'], kmers_config['upper']
+    k, diff = kmers_config['k'], kmers_config['diff']
 
     def get_avg_cov(seq):
         kmer_list = [seq[i:i+k] for i in range(len(seq)-k+1)]
-        new_kmer_list = [kmer for kmer in kmer_list if kmer not in KMER_COV_MEMO]
-        new_kmer_freqs = get_kmer_freqs(jf_path, new_kmer_list)
-        KMER_COV_MEMO.update(new_kmer_freqs)
 
         total_cov, missed = 0, 0
-        for kmer in kmer_list:
-            f = KMER_COV_MEMO[kmer]
-            if f <= lower or f >= upper:
+        for c_kmer in kmer_list:
+            if c_kmer not in kmers: c_kmer = str(Seq.Seq(c_kmer).reverse_complement())
+            if c_kmer not in kmers: # if it is still not in kmers, that means it was filtered out due to missing solid threshold
                 missed += 1
             else:
-                total_cov += f
+                total_cov += kmers[c_kmer]
             
         if missed > kmers_config['rep_threshold']*len(kmer_list): # the sequence only contained invalid kmers
             return -99999
@@ -546,361 +456,24 @@ def check_connection_cov(s1, s2, kmers_config, jf_path):
     SEQ_COV_MEMO[(s1, s2)] = (cov_diff, check, is_invalid)
     return cov_diff, check, is_invalid
 
-def parse_ghost_for_repetitive_wrapper(args):
-    return parse_ghost_for_repetitive(*args)
-
-def parse_ghost_for_repetitive(nid, seq, kmers_config, threshold, jf_path):
-    k, lower, upper = kmers_config['k'], kmers_config['lower'], kmers_config['upper']
-    kmer_list = [seq[i:i+k] for i in range(len(seq)-k+1)]
-    new_kmer_list = [kmer for kmer in kmer_list if kmer not in KMER_COV_MEMO]
-    new_kmer_freqs = get_kmer_freqs(jf_path, new_kmer_list)
-    KMER_COV_MEMO.update(new_kmer_freqs)
-
-    missed = sum(1 for kmer in kmer_list if KMER_COV_MEMO[kmer] <= lower or KMER_COV_MEMO[kmer] >= upper)
-
-    return nid, missed > threshold*len(kmer_list)
-
-def remove_repetitive_ghosts(adj_list, n2s_ghost, kmers_config, jf_path):
-    """
-    Removes ghost nodes that are flagged as repetitive. (Threshold set by rep_threshold hyperparam). Uses multiprocessing.
-    """
-    threshold = kmers_config['rep_threshold']
+def remove_repetitive_ghosts(adj_list, n2s_ghost, kmers, k, threshold):
     removed, initial = 0, len(n2s_ghost)
-    full_args = [(nid, seq, kmers_config, threshold, jf_path) for nid, seq in n2s_ghost.items()]
-    with Pool(40) as pool:
-        results = pool.imap_unordered(parse_ghost_for_repetitive_wrapper, full_args)
-        for nid, is_repetitive in tqdm(results, ncols=120, total=len(n2s_ghost)):
-            if is_repetitive:
-                adj_list.remove_node(nid)
-                removed += 1
+    for nid, seq in n2s_ghost.items():
+        kmer_list = [seq[i:i+k] for i in range(len(seq)-k+1)]
+        missed = 0
+        for c_kmer in kmer_list:
+            if c_kmer not in kmers: c_kmer = str(Seq.Seq(c_kmer).reverse_complement())
+            if c_kmer not in kmers: # if it is still not in kmers, that means it was filtered out due to missing solid threshold
+                missed += 1
+
+        if missed > threshold*len(kmer_list):
+            adj_list.remove_node(nid)
+            removed += 1
 
     print(f"Repetitive ghosts removed: {removed}/{initial}")
     return adj_list
 
-def get_best_walk_default(adj_list, start_node, n_old_walks, telo_ref, penalty=None, memo_chances=10000, visited_init=None):
-    """
-    Given a start node, run the greedy DFS to retrieve the walk with the most key nodes.
-
-    1. When searching, the number of key nodes in the walk, telomere information, and penalty is tracked.
-        a. Number of key nodes are used to compare and select walks.
-        b. Telomere information is used to terminate walks. If a telomere key node is found, it checks the compatability with the telomere in the current walk (if any). For a telomere to be compatible,
-            i. The motif must be opposite.
-            ii. The position of the telomere in the key node's sequence must be opposite. i.e. If the current walk begins with a key node with a telomere at the start of its sequence, then it will only accept key nodes with telomeres at the end of its sequence, and vice versa.
-            iii. The penalty (either overlap similarity or overlap length, configurable) is also tracked to break ties on number of key nodes. However, we found this to not be of much use.
-    2. Optimal walks from each node are memoised after being visited memo_chances number of times. This is because exhaustively searching is computationally infeasible.
-    """
-
-    # Dictionary to memoize the longest walk from each node
-    memo, memo_counts = {}, defaultdict(int)
-
-    def get_telo_info(node):
-        if node >= n_old_walks: return None
-
-        if telo_ref[node]['start']:
-            return ('start', telo_ref[node]['start'])
-        elif telo_ref[node]['end']:
-            return ('end', telo_ref[node]['end'])
-        else:
-            return None
-
-    def check_telo_compatibility(t1, t2):
-        if t1 is None or t2 is None:
-            return True
-        elif t1[0] != t2[0] and t1[1] != t2[1]: # The position and motif var must be different.
-            return True
-        else:
-            return False
-
-    def dedup(curr_node, curr_walk, curr_key_nodes, curr_penalty):
-        curr_walk_set = set(curr_walk)
-        if curr_node not in curr_walk_set:
-            return curr_walk, curr_key_nodes, curr_penalty
-        
-        c_walk, c_key_nodes, c_penalty = [], 0, 0
-        for i, n in enumerate(curr_walk):
-            if n == curr_node: break
-            c_walk.append(n)
-            if n < n_old_walks: c_key_nodes += 1
-            if i != len(curr_walk)-1:
-                c_edge = adj_list.get_edge(n, curr_walk[i+1])
-                if penalty == "ol_len":
-                    c_penalty -= c_edge.ol_len
-                elif penalty == "ol_sim":
-                    c_penalty += -1*c_edge.ol_sim
-
-        return c_walk, c_key_nodes, c_penalty
-
-    def dfs(node, visited, walk_telo):
-        if node < n_old_walks:
-            telo_info = get_telo_info(node)
-            if telo_info is not None:
-                if walk_telo: print("WARNING: Trying to set walk_telo when it is already set!") 
-                walk_telo = telo_info
-
-        # If the longest walk starting from this node is already memoised and telomere is compatible, return it
-        if node in memo: 
-            memo_telo = memo[node][3]
-            if check_telo_compatibility(walk_telo, memo_telo):
-                last_node = memo[node][0][-1]
-                is_final_t2t = walk_telo and last_node < n_old_walks and ((telo_ref[last_node]['start'] and telo_ref[last_node]['start'] != walk_telo[1]) or (telo_ref[last_node]['end'] and telo_ref[last_node]['end'] != walk_telo[1]))
-                return memo[node][0], memo[node][1], memo[node][2], is_final_t2t
-
-        visited.add(node)
-        max_walk, max_key_nodes, min_penalty, is_max_t2t = [node], 0, 0, False
-
-        # Traverse all the neighbors of the current node
-        for neighbor in adj_list.get_neighbours(node):
-            # Check visited
-            dst = neighbor.new_dst_nid
-            if dst in visited: continue
-            # Check telomere compatibility
-            terminate = False
-            if dst < n_old_walks:
-                curr_telo = get_telo_info(dst)
-                if curr_telo is not None:
-                    if check_telo_compatibility(walk_telo, curr_telo):
-                        terminate = True
-                    else:
-                        continue 
-
-            if terminate:
-                # Terminate search at the next node due to telomere compatibility
-                current_walk, current_key_nodes, current_penalty, is_curr_t2t = [dst], 1, 0, True
-            else:
-                # Perform DFS on the neighbor and check the longest walk from that neighbor
-                current_walk, current_key_nodes, current_penalty, is_curr_t2t = dfs(dst, visited, walk_telo)
-                # We have to check if there are duplicates in the returned walk. This is because of memoisation, where a returned memoised result can bypass visited set check.
-                current_walk, current_key_nodes, current_penalty = dedup(node, current_walk, current_key_nodes, current_penalty)
-
-            # Add the penalty for selecting that neighbour, either based on OL Len or OL Sim
-            if penalty == "ol_len":
-                current_penalty -= neighbor.ol_len
-            elif penalty == "ol_sim":
-                current_penalty += -1*neighbor.ol_sim
-
-            if current_walk[-1] >= n_old_walks: # last node is a ghost node, should not count their penalty
-                prev_node = node if len(current_walk) == 1 else current_walk[-2]
-                curr_edge = adj_list.get_edge(prev_node, current_walk[-1])
-                if penalty == "ol_len":
-                    current_penalty -= curr_edge.ol_len
-                elif penalty == "ol_sim":
-                    current_penalty -= curr_edge.ol_sim
-
-            # Update the best walk
-            if is_max_t2t and not is_curr_t2t: continue
-            if (current_key_nodes > max_key_nodes) or (current_key_nodes == max_key_nodes and current_penalty < min_penalty) or (is_curr_t2t and not is_max_t2t):
-                is_max_t2t = is_curr_t2t
-                max_walk = [node] + current_walk
-                max_key_nodes = current_key_nodes
-                min_penalty = current_penalty
-
-        visited.remove(node)
-        if node < n_old_walks: max_key_nodes += 1
-
-        # Memoize the result for this node if chances are used up
-        memo_counts[node] += 1
-        if memo_counts[node] >= memo_chances:
-            if len(max_walk) == 1 and max_walk[-1] >= n_old_walks:
-                curr_telo = None
-            elif max_walk[-1] < n_old_walks:
-                curr_telo = get_telo_info(max_walk[-1])
-            else:
-                curr_telo = get_telo_info(max_walk[-2])
-            memo[node] = (max_walk, max_key_nodes, min_penalty, curr_telo)
-
-        is_final_t2t = walk_telo and max_walk[-1] < n_old_walks and ((telo_ref[max_walk[-1]]['start'] and telo_ref[max_walk[-1]]['start'] != walk_telo[1]) or (telo_ref[max_walk[-1]]['end'] and telo_ref[max_walk[-1]]['end'] != walk_telo[1]))
-
-        return max_walk, max_key_nodes, min_penalty, is_final_t2t
-
-    # Start DFS from the given start node
-    if visited_init is None: visited_init = set()
-    res_walk, res_key_nodes, res_penalty, is_res_t2t = dfs(start_node, visited_init, None)
-
-    # If the last node in a walk is a ghost node, remove it from the walk and negate its penalty.
-    # This case should not occur, but I am just double checking
-    if res_walk[-1] >= n_old_walks:
-        curr_edge = adj_list.get_edge(res_walk[-2], res_walk[-1])
-        if penalty == "ol_len":
-            res_penalty -= curr_edge.ol_len
-        elif penalty == "ol_sim":
-            res_penalty -= curr_edge.ol_sim
-        res_walk.pop()
-
-    return res_walk, res_key_nodes, res_penalty, is_res_t2t
-
-def get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, n2s, kmers_config, jf_path, penalty=None, visited_init=None):
-    """
-    Given a start node, recursively and greedily chooses the edge with the highest probabilty score while also checking telomere compatibility.
-    Note: dfs penalty is currently not being used, but leaving it here for possible future extension. the 0 returned by this function represents the penalty of the best walk.
-    """
-
-    def get_telo_info(node):
-        if node >= n_old_walks: return None
-
-        if telo_ref[node]['start']:
-            return ('start', telo_ref[node]['start'])
-        elif telo_ref[node]['end']:
-            return ('end', telo_ref[node]['end'])
-        else:
-            return None
-
-    def check_telo_compatibility(t1, t2):
-        if t2 is None:
-            return 0
-        elif t1 is None and t2 is not None:
-            return 1
-        elif t1[0] != t2[0] and t1[1] != t2[1]: # The position and motif var must be different.
-            return 1
-        else:
-            return -1
-
-    if visited_init is None: visited_init = set()
-    walk, n_key_nodes, visited, terminate = [start_node], 1, visited_init, False
-    visited.add(start_node)
-    c_node = start_node
-    walk_telo = get_telo_info(start_node)
-
-    while True:
-        neighs = adj_list.get_neighbours(c_node)
-        c_neighs, c_neighs_terminate = [], []
-
-        if c_node >= n_old_walks: s1 = n2s[adj_list.get_edge(walk[-2], walk[-1]).old_src_nid]
-
-        for n in neighs:
-            if n.new_dst_nid in visited: continue
-            curr_telo = get_telo_info(n.new_dst_nid)
-            telo_compatibility = check_telo_compatibility(walk_telo, curr_telo)
-            if telo_compatibility < 0: 
-                continue
-            elif telo_compatibility > 0:
-                c_neighs_terminate.append(n)
-            else:
-                c_neighs.append(n)
-
-        if not c_neighs and not c_neighs_terminate: break
-
-        terminate, no_neigh_found = False, False
-        while True:
-            if not c_neighs and not c_neighs_terminate: 
-                no_neigh_found = True
-                break
-
-            if c_neighs_terminate:
-                terminate = True
-                highest_score = max(c_neighs_terminate, key=lambda n: e2s[c_node, n.new_dst_nid])
-                c_neighs_terminate.remove(highest_score)
-            else:
-                terminate = False
-                highest_score = max(c_neighs, key=lambda n: e2s[c_node, n.new_dst_nid])
-                c_neighs.remove(highest_score)
-
-            if c_node < n_old_walks: break
-            assert walk[-2] < n_old_walks and highest_score.new_dst_nid < n_old_walks, "Non S -> G -> S sequence found!"
-            _, cov_check, _ = check_connection_cov(s1, n2s[highest_score.old_dst_nid], kmers_config, jf_path)
-            if cov_check: break
-
-        if no_neigh_found: break            
-
-        walk.append(highest_score.new_dst_nid)
-        if highest_score.new_dst_nid < n_old_walks: n_key_nodes += 1
-        c_node = highest_score.new_dst_nid
-        visited.add(c_node)
-
-        if terminate: break
-
-    if walk[-1] >= n_old_walks: walk.pop()
-    is_t2t = walk_telo and walk[-1] < n_old_walks and ((telo_ref[walk[-1]]['start'] and telo_ref[walk[-1]]['start'] != walk_telo[1]) or (telo_ref[walk[-1]]['end'] and telo_ref[walk[-1]]['end'] != walk_telo[1]))
-
-    return walk, n_key_nodes, 0, is_t2t
-
-def get_best_walk_coverage_lookahead(adj_list, start_node, n_old_walks, telo_ref, n2s, kmers_config, jf_path, graph, old_walks, edges_full, penalty=None, visited_init=None):
-    """
-    Given a start node, recursively and greedily chooses the next sequence node (performs 1 step lookahead to skip over the ghost) which has the lowest coverage difference.
-    Note: dfs penalty is currently not being used, but leaving it here for possible future extension. the 0 returned by this function represents the penalty of the best walk.
-    """
-    def get_telo_info(node):
-        if node >= n_old_walks: return None
-
-        if telo_ref[node]['start']:
-            return ('start', telo_ref[node]['start'])
-        elif telo_ref[node]['end']:
-            return ('end', telo_ref[node]['end'])
-        else:
-            return None
-
-    def check_telo_compatibility(t1, t2):
-        if t2 is None:
-            return 0
-        elif t1 is None and t2 is not None:
-            return 1
-        elif t1[0] != t2[0] and t1[1] != t2[1]: # The position and motif var must be different.
-            return 1
-        else:
-            return -1
-
-    def get_surrounding_seq(walk_id, old_node_id):
-        seq = n2s[old_node_id]
-
-        old_walk = old_walks[walk_id]
-        ind = old_walk.index(old_node_id)
-        if ind > 0:
-            prev_node_id = old_walk[ind-1]
-            prefix_len = graph.edata['prefix_length'][edges_full[(prev_node_id, old_node_id)]]
-            seq = n2s[prev_node_id][:prefix_len] + seq
-        if ind+1 < len(old_walk):
-            next_node_id = old_walk[ind+1]
-            prefix_len = graph.edata['prefix_length'][edges_full[(old_node_id, next_node_id)]]
-            seq = seq[:prefix_len] + n2s[next_node_id]
-
-        return seq
-        
-    if visited_init is None: visited_init = set()
-    walk, n_key_nodes, visited = [start_node], 1, visited_init
-    visited.add(start_node)
-    c_node = start_node
-    walk_telo = get_telo_info(start_node)
-
-    while True:
-        assert c_node < n_old_walks, "Current node is not a sequence node. Please report this bug, thanks!"
-        ghost_neighs = adj_list.get_neighbours(c_node)
-        
-        # performs 1-hop lookahead
-        best_diff, best_g_neigh, best_s_neigh = float('inf'), None, None
-        # if difference is not being checked, and there is only one neighbour, select it immediately
-        if kmers_config['diff'] >= 1 and len(ghost_neighs) == 1 and len(adj_list.get_neighbours(ghost_neighs[0].new_dst_nid)) == 1:
-            best_g_neigh = ghost_neighs[0].new_dst_nid
-            best_s_neigh = adj_list.get_neighbours(ghost_neighs[0].new_dst_nid)[0].new_dst_nid
-        else:
-            for g in ghost_neighs:
-                if g.new_dst_nid in visited: continue
-                seq_neighs = adj_list.get_neighbours(g.new_dst_nid) # get all neighbours of n, which is a ghost
-                s1 = get_surrounding_seq(g.new_src_nid, g.old_src_nid)
-                for s in seq_neighs:
-                    if s.new_dst_nid in visited: continue
-                    curr_telo = get_telo_info(s.new_dst_nid)
-                    if check_telo_compatibility(walk_telo, curr_telo) < 0: continue
-                    s2 = get_surrounding_seq(s.new_dst_nid, s.old_dst_nid)
-                    diff, cov_check, is_invalid = check_connection_cov(s1, s2, kmers_config, jf_path)
-                    if not is_invalid and not cov_check: continue
-                    if diff < best_diff:
-                        best_diff = diff
-                        best_g_neigh = g.new_dst_nid
-                        best_s_neigh = s.new_dst_nid
-
-        if best_g_neigh is None: break
-        walk.append(best_g_neigh); walk.append(best_s_neigh)
-        visited.add(best_g_neigh); visited.add(best_s_neigh)
-        n_key_nodes += 1
-        c_node = best_s_neigh
-
-        curr_telo = get_telo_info(best_s_neigh)
-        if check_telo_compatibility(walk_telo, curr_telo) > 0: break
-
-    is_t2t = walk_telo and walk[-1] < n_old_walks and ((telo_ref[walk[-1]]['start'] and telo_ref[walk[-1]]['start'] != walk_telo[1]) or (telo_ref[walk[-1]]['end'] and telo_ref[walk[-1]]['end'] != walk_telo[1]))
-
-    return walk, n_key_nodes, 0, is_t2t
-
-def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, n2s_ghost, kmers_config, jf_path, penalty=None, visited_init=None):
+def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, n2s_ghost, kmers, kmers_config, penalty=None, visited_init=None):
     """
     Given a start node, recursively and greedily chooses the next node which has the lowest coverage difference.
     Note: dfs penalty is currently not being used, but leaving it here for possible future extension. the 0 returned by this function represents the penalty of the best walk.
@@ -961,9 +534,9 @@ def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, n2s
             for n in c_neighs_terminate:
                 terminate = True
                 s1 = n2s_ghost[c_node] if c_node >= n_old_walks else n2s[n.old_src_nid]
-                s2 = n2s[n.old_dst_nid] if c_node >= n_old_walks else n2s_ghost[n.new_dst_nid]
+                s2 = n2s_ghost[n.new_dst_nid] if n.new_dst_nid >= n_old_walks else n2s[n.old_dst_nid]
                 if n.ol_len + 100 + kmers_config['k'] > len(s1) or n.ol_len + 100 + kmers_config['k'] > len(s2): continue # there must be at least 100 kmers to calculate the coverage
-                cov_diff, cov_check, is_invalid = check_connection_cov(s1[:n.ol_len], s2[n.ol_len:], kmers_config, jf_path)
+                cov_diff, cov_check, is_invalid = check_connection_cov(s1[:n.ol_len], s2[n.ol_len:], kmers, kmers_config)
                 if not is_invalid and not cov_check: continue
                 if cov_diff < best_diff:
                     best_diff = cov_diff
@@ -973,9 +546,9 @@ def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, n2s
                 for n in c_neighs:
                     terminate = False
                     s1 = n2s_ghost[c_node] if c_node >= n_old_walks else n2s[n.old_src_nid]
-                    s2 = n2s[n.old_dst_nid] if c_node >= n_old_walks else n2s_ghost[n.new_dst_nid]
+                    s2 = n2s_ghost[n.new_dst_nid] if n.new_dst_nid >= n_old_walks else n2s[n.old_dst_nid]
                     if n.ol_len + 100 + kmers_config['k'] > len(s1) or n.ol_len + 100 + kmers_config['k'] > len(s2): continue # there must be at least 100 kmers to calculate the coverage
-                    cov_diff, cov_check, is_invalid = check_connection_cov(s1[:n.ol_len], s2[n.ol_len:], kmers_config, jf_path)
+                    cov_diff, cov_check, is_invalid = check_connection_cov(s1[:n.ol_len], s2[n.ol_len:], kmers, kmers_config)
                     if not is_invalid and not cov_check: continue
                     if cov_diff < best_diff:
                         best_diff = cov_diff
@@ -988,12 +561,13 @@ def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, n2s
         c_node = best_neigh
         if terminate: break
 
-    if walk[-1] >= n_old_walks: walk.pop()
+    while walk[-1] >= n_old_walks:
+        walk.pop()
     is_t2t = walk_telo and walk[-1] < n_old_walks and ((telo_ref[walk[-1]]['start'] and telo_ref[walk[-1]]['start'] != walk_telo[1]) or (telo_ref[walk[-1]]['end'] and telo_ref[walk[-1]]['end'] != walk_telo[1]))
 
     return walk, n_key_nodes, 0, is_t2t
 
-def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s, n2s, n2s_ghost, kmers_config, jf_path, old_graph, old_walks, edges_full, decoding='default'):
+def get_walks(adj_list, telo_ref, dfs_penalty, n2s, n2s_ghost, kmers, kmers_config, old_graph, old_walks, edges_full, decoding='default'):
     """
     Creates the new walks, priotising key nodes with telomeres.
 
@@ -1003,21 +577,16 @@ def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s, n2s, n2s_ghost, km
     3. We then repeat the above step for all key nodes without telomere information that are still unused.
     """ 
 
-    n_old_walks = len(walk_ids)
+    n_old_walks = len(old_walks)
     def get_best_walk(adj_list, start_node, visited_init=None):
-        if decoding == 'gnnome_score':
-            return get_best_walk_gnnome(adj_list, start_node, n_old_walks, telo_ref, e2s, n2s, kmers_config, jf_path, visited_init=visited_init)
-        elif decoding == 'coverage_lookahead':
-            return get_best_walk_coverage_lookahead(adj_list, start_node, n_old_walks, telo_ref, n2s, kmers_config, jf_path, old_graph, old_walks, edges_full, visited_init=visited_init)
-        elif decoding == 'coverage':
-            return get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, n2s_ghost, kmers_config, jf_path, visited_init=visited_init)
+        if decoding == 'coverage':
+            return get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, n2s_ghost, kmers, kmers_config, visited_init=visited_init)
         else:
-            return get_best_walk_default(adj_list, start_node, n_old_walks, telo_ref, dfs_penalty, visited_init=visited_init)
-
+            raise ValueError("Invalid decoding param!")
 
     # Initialise reverse adj list
     new_walks = []
-    temp_walk_ids, temp_adj_list = deepcopy(walk_ids), deepcopy(adj_list)
+    walk_ids, temp_adj_list = list(range(len(old_walks))), deepcopy(adj_list)
     rev_adj_list = AdjList()
     for edges in temp_adj_list.adj_list.values():
         for e in edges:
@@ -1037,11 +606,11 @@ def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s, n2s, n2s_ghost, km
             new_walks.append([walk_id])
             temp_adj_list.remove_node(walk_id)
             rev_adj_list.remove_node(walk_id)
-            temp_walk_ids.remove(walk_id)
+            walk_ids.remove(walk_id)
 
     # Split walks into those with telomeric regions and those without
     telo_walk_ids, non_telo_walk_ids = [], []
-    for i in temp_walk_ids:
+    for i in walk_ids:
         if telo_ref[i]['start'] or telo_ref[i]['end']:
             telo_walk_ids.append(i)
         else:
@@ -1104,79 +673,52 @@ def get_walks(walk_ids, adj_list, telo_ref, dfs_penalty, e2s, n2s, n2s_ghost, km
     print(f"New walks generated! n new walks: {len(new_walks)}")
     return new_walks
 
-def rename_ghosts(iteration, new_walks, n2s_ghost, n_old_walks):
-    """
-    Renames ghosts to add the iteration label. E.g. 423 -> '1-423'
-    """
-    new_n2s_ghost = {}
-    for nw in new_walks:
-        for i, n in enumerate(nw):
-            if n < n_old_walks: continue
-            new_name = f"{iteration}-{n}"
-            new_n2s_ghost[new_name] = n2s_ghost[n]
-            nw[i] = new_name
-
-    return new_walks, new_n2s_ghost
-
-def get_contigs(old_walks, new_walks, adj_lists, n2s, n2s_ghost, g, edges_full, n2nns):
+def get_contigs(old_walks, new_walks, adj_list, n2s, n2s_ghost, g, edges_full):
     """
     Recreates the contigs given the new walks. 
     
     1. Pre-processes the new walks to break down key nodes into the original nodes based on their connections.
     2. Converts the nodes into the contigs. This is done in the same way as in the GNNome pipeline.
     """
-
     n_old_walks = len(old_walks)
-    walk_nodes, walk_seqs, walk_prefix_lens = [], [], []
+    walk_seqs, walk_prefix_lens = [], []
     for i, walk in enumerate(new_walks):
-        c_nodes, c_seqs, c_prefix_lens = [], [], []
+        c_seqs, c_prefix_lens = [], []
 
         for j, node in enumerate(walk):
-            if "-" in str(node): # Node is a new ghost node
-                c_nodes.append(node)
+            if node >= n_old_walks: # Node is a ghost node, it can never be the first or last node in a walk
                 c_seqs.append(str(n2s_ghost[node]))
-                split = node.split("-")
-                iteration, gid = int(split[0]), int(split[1])
-                curr_edge = adj_lists[iteration].get_edge(gid, n2nns[iteration][walk[j+1]])
-                c_prefix_lens.append(curr_edge.prefix_len)
+                c_prefix_lens.append(adj_list.get_edge(node, walk[j+1]).prefix_len)
             else: # Node is an original walk
-                node = int(node)
-                assert node < n_old_walks, "Invalid sequence node id found!"
                 old_walk = old_walks[node]
                 if j == 0:
                     start = 0
                 else:
-                    split = walk[j-1].split("-")
-                    iteration, gid = int(split[0]), int(split[1])
-                    curr_edge = adj_lists[iteration].get_edge(gid, n2nns[iteration][node])
+                    curr_edge = adj_list.get_edge(walk[j-1], node)
                     start = old_walk.index(curr_edge.old_dst_nid)
                 
                 if j+1 == len(walk):
                     end = len(old_walk)-1
-                    prefix_len = None
+                    last_prefix_len = None
                 else:
-                    split = walk[j+1].split("-")
-                    iteration, gid = int(split[0]), int(split[1])
-                    curr_edge = adj_lists[iteration].get_edge(n2nns[iteration][node], gid)
+                    curr_edge = adj_list.get_edge(node, walk[j+1])
                     end = old_walk.index(curr_edge.old_src_nid)
-                    prefix_len = curr_edge.prefix_len
+                    last_prefix_len = curr_edge.prefix_len
 
                 for k in range(start, end+1):
-                    c_nodes.append(old_walk[k])
                     c_seqs.append(str(n2s[old_walk[k]]))
-
                     if k != end:
                         c_prefix_lens.append(g.edata['prefix_length'][edges_full[(old_walk[k], old_walk[k+1])]])
 
-                if prefix_len: c_prefix_lens.append(prefix_len)
+                if last_prefix_len: c_prefix_lens.append(last_prefix_len)
 
-        walk_nodes.append(c_nodes)
         walk_seqs.append(c_seqs)
         walk_prefix_lens.append(c_prefix_lens)
 
     contigs = []
     for i, seqs in enumerate(walk_seqs):
         prefix_lens = walk_prefix_lens[i]
+        assert len(seqs) == len(prefix_lens)+1, "Error in generating contigs. Please report this, thank you!"
         c_contig = []
         for j, seq in enumerate(seqs[:-1]):
             c_contig.append(seq[:prefix_lens[j]])
@@ -1190,7 +732,7 @@ def get_contigs(old_walks, new_walks, adj_lists, n2s, n2s_ghost, g, edges_full, 
 
     return contigs
 
-def postprocess(name, hyperparams, paths, aux, gnnome_config):
+def postprocess(name, hyperparams, paths, aux):
     """
     (\(\        \|/        /)/)
     (  ^.^)     -o-     (^.^  )
@@ -1212,7 +754,7 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
     for k, v in hyperparams.items():
         hyperparams_str += f"{k}: {v}, "
     print(hyperparams_str[:-2]+"\n")
-    walks, n2s, r2n, paf_data, old_graph, edges_full, hifi_r2s, ul_r2s = aux['walks'], aux['n2s'], aux['r2n'], aux['paf_data'], aux['old_graph'], aux['edges_full'], aux['hifi_r2s'], aux['ul_r2s']
+    walks, n2s, r2n, paf_data, old_graph, edges_full, hifi_r2s, ul_r2s, kmers = aux['walks'], aux['n2s'], aux['r2n'], aux['paf_data'], aux['old_graph'], aux['edges_full'], aux['hifi_r2s'], aux['ul_r2s'], aux['kmers']
 
     print(f"Chopping old walks... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     if hyperparams['use_telomere_info']:
@@ -1222,26 +764,20 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
         telo_ref = { i:{'start':None, 'end':None} for i in range(len(walks)) }
 
     print(f"Adding ghost nodes and edges... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-    adj_list, walk_ids, n2s_ghost, e2s = add_ghosts(
+    adj_list, n2s_ghost = add_ghosts(
         old_walks=walks,
         paf_data=paf_data,
         r2n=r2n,
         hifi_r2s=hifi_r2s,
         ul_r2s=ul_r2s,
-        n2s=n2s,
-        old_graph=old_graph,
-        edges_full=edges_full,
-        walk_valid_p=hyperparams['walk_valid_p'][0],
-        gnnome_config=gnnome_config,
-        model_path=paths['model']
+        walk_valid_p=hyperparams['walk_valid_p'][0]
     )
-    if adj_list is None and walk_ids is None and n2s_ghost is None and e2s is None:
+    if adj_list is None and n2s_ghost is None:
         print("No suitable nodes and edges found to add to these walks. Returning...")
         return
     
     print(f"Removing repetitive ghosts... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-    jf_path = paths['hifiasm']+f"{hyperparams['kmers']['k']}mers.jf"
-    adj_list = remove_repetitive_ghosts(adj_list, n2s_ghost, hyperparams['kmers'], jf_path)
+    adj_list = remove_repetitive_ghosts(adj_list, n2s_ghost, kmers, hyperparams['kmers']['k'], hyperparams['kmers']['rep_threshold'])
 
     # Remove duplicate edges between nodes. If there are multiple connections between a walk and another node/walk, we choose the best one.
     # This could probably have been done while adding the edges in. However, to avoid confusion, i'm doing this separately.
@@ -1250,45 +786,22 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
 
     print(f"Generating new walks with {hyperparams['decoding']} decoding... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     new_walks = get_walks(
-        walk_ids=walk_ids,
         adj_list=adj_list,
         telo_ref=telo_ref,
         dfs_penalty=hyperparams['dfs_penalty'],
-        e2s=e2s,
         n2s=n2s,
         n2s_ghost=n2s_ghost,
+        kmers=kmers,
         kmers_config=hyperparams['kmers'],
-        jf_path=jf_path,
         old_graph=old_graph,
         old_walks=walks,
         edges_full=edges_full,
         decoding=hyperparams['decoding']
     )
-
     analyse_graph(adj_list, telo_ref, new_walks, paths['save'], 0)
-    new_walks, n2s_ghost = rename_ghosts(0, new_walks, n2s_ghost, len(walks))
-    # Do an analysis just for first iteration
-    if hyperparams['iterations'] > 1:
-        print(f"Calculating first iteration assembly metrics... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-        contigs = get_contigs(walks, new_walks, [adj_list], n2s, n2s_ghost, old_graph, edges_full, [{i:i for i in range(len(walks))}])
-        asm_metrics(contigs, paths['save'], paths['ref'], paths['minigraph'], paths['paftools'])
-
-    print(f"Iterating postprocessing... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-    new_walks, new_n2s_ghost, adj_lists, n2nns = iterate_postprocessing(
-        aux=aux,
-        hyperparams=hyperparams,
-        paths=paths,
-        new_walks=new_walks,
-        telo_ref=telo_ref,
-        n2s_ghost=n2s_ghost,
-        edges_full=edges_full
-    )
-    n2s_ghost.update(new_n2s_ghost)
-    adj_lists.insert(0, adj_list)
-    n2nns.insert(0, {i:i for i in range(len(walks))})
 
     print(f"Generating contigs... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-    contigs = get_contigs(walks, new_walks, adj_lists, n2s, n2s_ghost, old_graph, edges_full, n2nns)
+    contigs = get_contigs(walks, new_walks, adj_list, n2s, n2s_ghost, old_graph, edges_full)
 
     print(f"Calculating final assembly metrics... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     asm_metrics(contigs, paths['save'], paths['ref'], paths['minigraph'], paths['paftools'])
@@ -1301,7 +814,6 @@ def postprocess(name, hyperparams, paths, aux, gnnome_config):
 def run_postprocessing(config):
     postprocessing_config = config['postprocessing']
     postprocessing_config['kmers'] = config['misc']['kmers']
-    gnnome_config = config['gnnome']
     genomes = config['run']['postprocessing']['genomes']
     for genome in genomes:
         postprocessing_config['telo_motif'] = config['genome_info'][genome]['telo_motifs']
@@ -1319,7 +831,8 @@ def run_postprocessing(config):
         with open(paths['paf_processed'], 'rb') as f:
             aux['paf_data'] = pickle.load(f)
 
-        postprocessing_config['kmers']['lower'], postprocessing_config['kmers']['upper'] = get_kmer_solid_thresholds(paths['hifiasm']+f"{postprocessing_config['kmers']['k']}mers")
+        lower, upper = get_kmer_solid_thresholds(paths['hifiasm']+f"{postprocessing_config['kmers']['k']}mers")
+        aux['kmers'] = get_all_kmer_freqs(paths['hifiasm']+f"{postprocessing_config['kmers']['k']}mers.jf", lower, upper)
 
         old_graph = dgl.load_graphs(paths['graph']+f'{genome}.dgl')[0][0]
         # Create a list of all edges
@@ -1333,7 +846,7 @@ def run_postprocessing(config):
         aux['hifi_r2s'] = Fasta(paths['ec_reads'])
         aux['ul_r2s'] = Fasta(paths['ul_reads']) if paths['ul_reads'] else None
 
-        postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
+        postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux)
         # for diff in [0.75, 1]:
         #     postprocessing_config['kmers']['diff'] = diff
-        #     postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, gnnome_config=gnnome_config)
+        #     postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux)
