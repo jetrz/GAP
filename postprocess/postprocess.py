@@ -3,6 +3,7 @@ from Bio import Seq, SeqIO
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
+from multiprocessing import Pool
 from pyfaidx import Fasta
 from tqdm import tqdm
 
@@ -336,6 +337,8 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, walk_valid_p):
         if src_nid in in_out_degs: in_out_degs[src_nid][1] += len(neighbours)
     to_remove = set(i for i in range(len(old_walks), n_id) if in_out_degs[i][0] <= 0 or in_out_degs[i][1] <= 0)
     adj_list.remove_nodes(to_remove)
+    for n in to_remove:
+        del n2s_ghost[n]
     removed = len(to_remove)
     print("Final number of nodes:", n_id-removed)
 
@@ -456,22 +459,55 @@ def check_connection_cov(s1, s2, kmers, kmers_config):
     SEQ_COV_MEMO[(s1, s2)] = (cov_diff, check, is_invalid)
     return cov_diff, check, is_invalid
 
+def parse_ghost_for_repetitive_wrapper(args):
+    return parse_ghost_for_repetitive(*args)
+
+def parse_ghost_for_repetitive(nid, seq, kmers, k, threshold):
+    kmer_list = [seq[i:i+k] for i in range(len(seq)-k+1)]
+    missed = 0
+    for c_kmer in kmer_list:
+        if c_kmer not in kmers: c_kmer = str(Seq.Seq(c_kmer).reverse_complement())
+        if c_kmer not in kmers: # if it is still not in kmers, that means it was filtered out due to missing solid threshold
+            missed += 1
+
+    return nid, missed > threshold*len(kmer_list)
+
 def remove_repetitive_ghosts(adj_list, n2s_ghost, kmers, k, threshold):
-    removed, initial = 0, len(n2s_ghost)
-    for nid, seq in n2s_ghost.items():
-        kmer_list = [seq[i:i+k] for i in range(len(seq)-k+1)]
-        missed = 0
-        for c_kmer in kmer_list:
-            if c_kmer not in kmers: c_kmer = str(Seq.Seq(c_kmer).reverse_complement())
-            if c_kmer not in kmers: # if it is still not in kmers, that means it was filtered out due to missing solid threshold
-                missed += 1
+    """
+    Removes ghost nodes that are flagged as repetitive. (Threshold set by rep_threshold hyperparam). Uses multiprocessing.
+    """
+    full_args = [(nid, seq, kmers, k, threshold) for nid, seq in n2s_ghost.items()]
+    to_remove = set()
+    with Pool(40) as pool:
+        results = pool.imap_unordered(parse_ghost_for_repetitive_wrapper, full_args)
+        for nid, is_repetitive in tqdm(results, ncols=120, total=len(n2s_ghost)):
+            if is_repetitive: to_remove.add(nid)
+            
+    adj_list.remove_nodes(to_remove)
+    for n in to_remove:
+        del n2s_ghost[n]
 
-        if missed > threshold*len(kmer_list):
-            adj_list.remove_node(nid)
-            removed += 1
+    print(f"Repetitive ghosts removed: {len(to_remove)}/{len(to_remove)+len(n2s_ghost)}")
+    return adj_list, n2s_ghost
 
-    print(f"Repetitive ghosts removed: {removed}/{initial}")
-    return adj_list
+# def remove_repetitive_ghosts(adj_list, n2s_ghost, kmers, k, threshold):
+#     to_remove = set()
+#     for nid, seq in tqdm(n2s_ghost.items(), ncols=120):
+#         kmer_list = [seq[i:i+k] for i in range(len(seq)-k+1)]
+#         missed = 0
+#         for c_kmer in kmer_list:
+#             if c_kmer not in kmers: c_kmer = str(Seq.Seq(c_kmer).reverse_complement())
+#             if c_kmer not in kmers: # if it is still not in kmers, that means it was filtered out due to missing solid threshold
+#                 missed += 1
+
+#         if missed > threshold*len(kmer_list): to_remove.add(nid)
+
+#     adj_list.remove_nodes(to_remove)
+#     for n in to_remove:
+#         del n2s_ghost[n]
+
+#     print(f"Repetitive ghosts removed: {len(to_remove)}/{len(to_remove)+len(n2s_ghost)}")
+#     return adj_list, n2s_ghost
 
 def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, n2s_ghost, kmers, kmers_config, penalty=None, visited_init=None):
     """
@@ -777,7 +813,7 @@ def postprocess(name, hyperparams, paths, aux):
         return
     
     print(f"Removing repetitive ghosts... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-    adj_list = remove_repetitive_ghosts(adj_list, n2s_ghost, kmers, hyperparams['kmers']['k'], hyperparams['kmers']['rep_threshold'])
+    adj_list, n2s_ghost = remove_repetitive_ghosts(adj_list, n2s_ghost, kmers, hyperparams['kmers']['k'], hyperparams['kmers']['rep_threshold'])
 
     # Remove duplicate edges between nodes. If there are multiple connections between a walk and another node/walk, we choose the best one.
     # This could probably have been done while adding the edges in. However, to avoid confusion, i'm doing this separately.
