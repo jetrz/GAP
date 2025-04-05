@@ -195,15 +195,9 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, walk_valid_p, hop):
 
     ghost_data = paf_data['ghost_nodes']
     print("Adding ghost nodes for Hop 1...")
-    n2s_ghost, r2n_ghost = {}, {}
+    n2s_ghost, r2n_ghost, r2s_memo = {}, {}, {}
     added_nodes_h1_count, added_nodes_h2_count = 0, 0
     c_ghost_data = ghost_data['hop_1']
-    
-    r2s = {}
-    for read_id in tqdm(c_ghost_data['+'].keys(), ncols=120, desc="Parsing sequences"):
-        pos_seq, neg_seq = get_seqs(read_id, hifi_r2s, ul_r2s)
-        r2s[read_id] = { '+':pos_seq, '-':neg_seq }
-
     for orient in ['+', '-']:
         for read_id, data in tqdm(c_ghost_data[orient].items(), ncols=120, desc=f"Orient: {orient}"):
             curr_out_neighbours, curr_in_neighbours = set(), set()
@@ -217,6 +211,11 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, walk_valid_p, hop):
                 in_n_id = r2n[in_read_id[0]][0] if in_read_id[1] == '+' else r2n[in_read_id[0]][1] 
                 if in_n_id not in n2n_end: continue
                 curr_in_neighbours.add((in_n_id, data['prefix_len_ins'][i], data['ol_len_ins'][i], data['ol_similarity_ins'][i]))
+
+            # If only hop 1 is used, ghost nodes are only useful if they have both at least one outgoing and one incoming edge.
+            if hop <= 1:
+                if not curr_out_neighbours or not curr_in_neighbours: continue
+                if all(x==n2n_start[next(iter(curr_out_neighbours))[0]] for x in [n2n_start[n[0]] for n in curr_out_neighbours]+[n2n_end[n[0]] for n in curr_in_neighbours]): continue
 
             for n in curr_out_neighbours:
                 adj_list.add_edge(Edge(
@@ -239,7 +238,10 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, walk_valid_p, hop):
                     ol_sim=n[3]
                 ))
 
-            n2s_ghost[n_id] = r2s[read_id][orient]
+            if read_id not in r2s_memo:
+                pos_seq, rev_seq = get_seqs(read_id, hifi_r2s, ul_r2s)
+                r2s_memo[read_id] = { '+':pos_seq, '-':rev_seq }
+            n2s_ghost[n_id] = r2s_memo[read_id][orient]
             r2n_ghost[read_id] = n_id
             n_id += 1; added_nodes_h1_count += 1
 
@@ -285,11 +287,10 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, walk_valid_p, hop):
                     ol_sim=n[3]
                 ))
 
-            if orient == '+':
-                seq, _ = get_seqs(read_id, hifi_r2s, ul_r2s)
-            else:
-                _, seq = get_seqs(read_id, hifi_r2s, ul_r2s)
-            n2s_ghost[n_id] = seq
+            if read_id not in r2s_memo:
+                pos_seq, rev_seq = get_seqs(read_id, hifi_r2s, ul_r2s)
+                r2s_memo[read_id] = { '+':pos_seq, '-':rev_seq }
+            n2s_ghost[n_id] = r2s_memo[read_id][orient]
             r2n_ghost[read_id] = n_id
             n_id += 1; added_nodes_h2_count += 1
 
@@ -444,45 +445,45 @@ def check_connection_cov(s1, s2, kmers, kmers_config):
 
 
 
-def parse_ghost_for_repetitive_wrapper(args):
-    return parse_ghost_for_repetitive(*args)
+# def parse_ghost_for_repetitive_wrapper(args):
+#     return parse_ghost_for_repetitive(*args)
 
-def parse_ghost_for_repetitive(nid, seq, kmers, threshold):
-    _, missed, total = kmers.get_seq_cov(seq)
-    return nid, missed >= threshold*total
-
-def remove_repetitive_ghosts(adj_list, n2s_ghost, kmers, threshold):
-    """
-    Removes ghost nodes that are flagged as repetitive. (Threshold set by rep_threshold hyperparam). Uses multiprocessing.
-    """
-    full_args = [(nid, seq, kmers, threshold) for nid, seq in n2s_ghost.items()]
-    to_remove = set()
-    with Pool(40) as pool:
-        results = pool.imap_unordered(parse_ghost_for_repetitive_wrapper, full_args)
-        for nid, is_repetitive in tqdm(results, ncols=120, total=len(n2s_ghost)):
-            if is_repetitive: to_remove.add(nid)
-            
-    adj_list.remove_nodes(to_remove)
-    for n in to_remove:
-        del n2s_ghost[n]
-
-    print(f"Repetitive ghosts removed: {len(to_remove)}/{len(to_remove)+len(n2s_ghost)}")
-    return adj_list, n2s_ghost
-
-
+# def parse_ghost_for_repetitive(nid, seq, kmers, threshold):
+#     _, missed, total = kmers.get_seq_cov(seq)
+#     return nid, missed >= threshold*total
 
 # def remove_repetitive_ghosts(adj_list, n2s_ghost, kmers, threshold):
+#     """
+#     Removes ghost nodes that are flagged as repetitive. (Threshold set by rep_threshold hyperparam). Uses multiprocessing.
+#     """
+#     full_args = [(nid, seq, kmers, threshold) for nid, seq in n2s_ghost.items()]
 #     to_remove = set()
-#     for nid, seq in tqdm(n2s_ghost.items(), ncols=120):
-#         _, missed, total = kmers.get_seq_cov(seq)
-#         if missed >= threshold*total: to_remove.add(nid)
-
+#     with Pool(40) as pool:
+#         results = pool.imap_unordered(parse_ghost_for_repetitive_wrapper, full_args)
+#         for nid, is_repetitive in tqdm(results, ncols=120, total=len(n2s_ghost)):
+#             if is_repetitive: to_remove.add(nid)
+            
 #     adj_list.remove_nodes(to_remove)
 #     for n in to_remove:
 #         del n2s_ghost[n]
 
 #     print(f"Repetitive ghosts removed: {len(to_remove)}/{len(to_remove)+len(n2s_ghost)}")
 #     return adj_list, n2s_ghost
+
+
+
+def remove_repetitive_ghosts(adj_list, n2s_ghost, kmers, threshold):
+    to_remove = set()
+    for nid, seq in tqdm(n2s_ghost.items(), ncols=120):
+        _, missed, total = kmers.get_seq_cov(seq)
+        if missed >= threshold*total: to_remove.add(nid)
+
+    adj_list.remove_nodes(to_remove)
+    for n in to_remove:
+        del n2s_ghost[n]
+
+    print(f"Repetitive ghosts removed: {len(to_remove)}/{len(to_remove)+len(n2s_ghost)}")
+    return adj_list, n2s_ghost
 
 def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, n2s_ghost, kmers, kmers_config, penalty=None, visited_init=None):
     """
@@ -847,8 +848,7 @@ def run_postprocessing(config):
             aux['paf_data'] = pickle.load(f)
             print(f"PAF data loaded... (Time: {timedelta_to_str(datetime.now() - time_start)})")
 
-        kmers = KmerManager(k=postprocessing_config['kmers']['k'])
-        kmers.generate_freqs(paths['hifiasm'])
+        kmers = KmerManager(k=postprocessing_config['kmers']['k'], save_path=paths['hifiasm'], mode=postprocessing_config['kmers']['mode'])
         aux['kmers'] = kmers
         print(f"Kmers data loaded... (Time: {timedelta_to_str(datetime.now() - time_start)})")
 

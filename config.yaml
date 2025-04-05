@@ -74,13 +74,14 @@ postprocessing:
   decoding: 'coverage' # 'default' or 'gnnome_score' or 'coverage' or 'coverage_lookahead'
   iterations: 1
   walk_valid_p: [0.01] # ensure there are at least # iterations number of values
-  hop: 2
+  hop: 1
 
 misc:
   kmers:
     k: 21
     diff: 1 # range between 0 to 1 where 0 removes all edges, while 1 removes none. diff threshold calculated by abs(cov1-cov2) <= diff*max(cov1,cov2)
     rep_threshold: 0.8 # threshold after which a sequence is considered to be from a repetitive region. 
+    mode: "query" # 'all' or 'query'
   paths:
     model: '/home/stumanuel/GAP/misc/default_best.pt'
     seqtk: '/home/stumanuel/GitHub/seqtk/seqtk'

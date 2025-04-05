@@ -229,6 +229,8 @@ def get_kmer_freqs(jf_path, kmer_list):
 
 def get_kmer_solid_thresholds(save_path_wo_ext):
     """
+    This is only used in postprocess_old.py. If that is no longer used, can delete this function
+    
     Filters out kmers by frequency and plots distribution + threshold graph.
     Lower threshold is the first local minima from the left, upper threshold is the first local minima after the average.
     Method from the paper "Constructing telomere-to-telomere diploid genome by polishing haploid nanopore-based assembly"
