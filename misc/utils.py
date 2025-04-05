@@ -1,4 +1,4 @@
-import dgl, glob, itertools, os, random, subprocess, torch
+import dgl, glob, os, random, subprocess, torch
 from Bio import Seq, SeqIO
 from collections import Counter
 import matplotlib.pyplot as plt
@@ -7,6 +7,8 @@ import networkx as nx
 import numpy as np
 import pickle
 from scipy.signal import argrelextrema
+
+KMER_HASH_BASE, KMER_HASH_MOD = 4, 2**61-1
 
 def timedelta_to_str(delta):
     hours, remainder = divmod(delta.seconds, 3600)
@@ -209,6 +211,9 @@ def analyse_graph(adj_list, telo_ref, walks, save_path, iteration):
     return
 
 def get_kmer_freqs(jf_path, kmer_list):
+    """
+    This is only used in postprocess_old.py. If that is no longer used, can delete this function
+    """
     freqs = {}
     batch_size = 1000
     for i in range(0, len(kmer_list), batch_size):
@@ -267,21 +272,6 @@ def get_kmer_solid_thresholds(save_path_wo_ext):
     plt.clf()
 
     return int(lower), int(upper)
-
-def get_all_kmer_freqs(jf_path, lower, upper):
-    cmd = f"jellyfish dump {jf_path} -L {lower} -U {upper}"
-    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
-
-    freqs = {}
-    lines = iter(process.stdout)
-    while True:
-        pair = [s.strip() for s in itertools.islice(lines, 2)]
-        if not pair: break
-        freqs[pair[1]] = int(pair[0][1:])
-
-    process.wait()
-
-    return freqs
 
 def print_ascii():
     """hehe"""
