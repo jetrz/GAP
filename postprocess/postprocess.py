@@ -333,19 +333,24 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, walk_valid_p, hop):
     print(f"Number of edges between existing nodes added - Hop 1: {added_edges_h1_count}, Hop 2: {added_edges_h2_count}")
 
     print("Removing ghost nodes with no in or out neighbours...")
-    in_out_degs = { i:[0,0] for i in range(len(old_walks), n_id) }
-    for src_nid, neighbours in adj_list.adj_list.items():
-        for n in neighbours:
-            if n.new_dst_nid in in_out_degs: in_out_degs[n.new_dst_nid][0] += 1
-        if src_nid in in_out_degs: in_out_degs[src_nid][1] += len(neighbours)
-    to_remove = set(i for i in range(len(old_walks), n_id) if in_out_degs[i][0] <= 0 or in_out_degs[i][1] <= 0)
-    adj_list.remove_nodes(to_remove)
-    for n in to_remove:
-        del n2s_ghost[n]
-    removed = len(to_remove)
-    print("Final number of nodes:", n_id-removed)
+    ghost_node_ids = set(range(len(old_walks), n_id))
+    total_removed = 0
+    while True:
+        to_remove = set()
+        for n in ghost_node_ids:
+            in_deg, out_deg = adj_list.get_in_out_deg(n)
+            if in_deg <= 0 or out_deg <= 0: to_remove.add(n)
+        if len(to_remove) <= 0: break
+        for n in to_remove:
+            adj_list.remove_node(n)
+            del n2s_ghost[n]
+            ghost_node_ids.remove(n)
+        total_removed += len(to_remove)
+    print("Final number of nodes:", n_id-total_removed)
 
-    if added_edges_h1_count or added_edges_h2_count or (added_nodes_h1_count+added_nodes_h2_count > removed):
+    adj_list.sanity_check()
+
+    if added_edges_h1_count or added_edges_h2_count or (added_nodes_h1_count+added_nodes_h2_count > total_removed):
         return adj_list, n2s_ghost
     else:
         return None, None
@@ -420,7 +425,8 @@ def deduplicate(adj_list, old_walks):
                 else:
                     raise ValueError("Duplicate edge between two non-walks found!")
                 
-        adj_list.adj_list[new_src_nid] = set(n for n in dup_checker.values())
+        for e in adj_list.adj_list[new_src_nid] - set(dup_checker.values()):
+            adj_list.remove_edge(e)
     
     print("Final number of edges:", sum(len(x) for x in adj_list.adj_list.values()))
     return adj_list
@@ -463,8 +469,8 @@ def check_connection_cov(s1, s2, kmers, kmers_config):
 #         for nid, is_repetitive in tqdm(results, ncols=120, total=len(n2s_ghost)):
 #             if is_repetitive: to_remove.add(nid)
             
-#     adj_list.remove_nodes(to_remove)
 #     for n in to_remove:
+#         adj_list.remove_node(n)
 #         del n2s_ghost[n]
 
 #     print(f"Repetitive ghosts removed: {len(to_remove)}/{len(to_remove)+len(n2s_ghost)}")
@@ -478,8 +484,8 @@ def remove_repetitive_ghosts(adj_list, n2s_ghost, kmers, threshold):
         _, missed, total = kmers.get_seq_cov(seq)
         if missed >= threshold*total: to_remove.add(nid)
 
-    adj_list.remove_nodes(to_remove)
     for n in to_remove:
+        adj_list.remove_node(n)
         del n2s_ghost[n]
 
     print(f"Repetitive ghosts removed: {len(to_remove)}/{len(to_remove)+len(n2s_ghost)}")

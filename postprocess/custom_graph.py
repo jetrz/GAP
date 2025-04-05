@@ -20,16 +20,34 @@ class AdjList():
 
     def __init__(self):
         self.adj_list = defaultdict(set)
+        self.rev_adj_list = defaultdict(set)
+        self.e2re = {} # edge to reverse edge
+        self.re2e = {} # reverse edge to edge
 
     def add_edge(self, edge):
         self.adj_list[edge.new_src_nid].add(edge)
+        rev_edge = Edge(
+            new_src_nid=edge.new_dst_nid,
+            new_dst_nid=edge.new_src_nid,
+            old_src_nid=edge.old_dst_nid,
+            old_dst_nid=edge.old_src_nid,
+            prefix_len=edge.prefix_len,
+            ol_len=edge.ol_len,
+            ol_sim=edge.ol_sim
+        )
+        self.rev_adj_list[edge.new_dst_nid].add(rev_edge)
+        self.e2re[edge] = rev_edge
+        self.re2e[rev_edge] = edge
 
     def remove_edge(self, edge):
         neighbours = self.adj_list[edge.new_src_nid]
         if edge not in neighbours:
             print("WARNING: Removing an edge that does not exist!")
+        re = self.e2re[edge]
         self.adj_list[edge.new_src_nid].discard(edge)
-        if not self.adj_list[edge.new_src_nid]: del self.adj_list[edge.new_src_nid]
+        self.rev_adj_list[edge.new_dst_nid].discard(re)
+        del self.e2re[edge]
+        del self.re2e[re]
 
     def get_edge(self, new_src_nid, new_dst_nid):
         for e in self.adj_list[new_src_nid]:
@@ -40,24 +58,48 @@ class AdjList():
         return None
             
     def remove_node(self, n_id):
-        if n_id in self.adj_list: del self.adj_list[n_id]
+        # Remove outgoing edges
+        for e in self.adj_list[n_id]:
+            re = self.e2re[e]
+            self.rev_adj_list[e.new_dst_nid].discard(re)
+            del self.re2e[re]
+            del self.e2re[e]
+        del self.adj_list[n_id]
 
-        new_adj_list = defaultdict(set)
-        for new_src_nid, neighbours in self.adj_list.items():
-            new_neighbours = set(e for e in neighbours if e.new_dst_nid != n_id)
-            if new_neighbours: new_adj_list[new_src_nid] = new_neighbours
-        self.adj_list = new_adj_list
+        # Remove incoming edges
+        for re in self.rev_adj_list[n_id]:
+            e = self.re2e[re]
+            self.adj_list[re.new_dst_nid].discard(e)
+            del self.re2e[re]
+            del self.e2re[e]
+        del self.rev_adj_list[n_id]
 
-    def remove_nodes(self, n_ids):
-        n_ids = set(n_ids)
-        for c_nid in n_ids:
-            if c_nid in self.adj_list: del self.adj_list[c_nid]
+    def get_in_out_deg(self, n_id):
+        return len(self.rev_adj_list[n_id]), len(self.adj_list[n_id])
 
-        new_adj_list = defaultdict(set)
-        for new_src_nid, neighbours in self.adj_list.items():
-            new_neighbours = set(e for e in neighbours if e.new_dst_nid not in n_ids)
-            if new_neighbours: new_adj_list[new_src_nid] = new_neighbours
-        self.adj_list = new_adj_list 
+    def sanity_check(self):
+        """
+        Checks if the two adjacency lists are equivalent.
+        """
+        simple_adj_list, simple_rev_adj_list = defaultdict(set), defaultdict(set)
+        for src, neighs in self.adj_list.items():
+            simple_adj_list[src] = set(e.new_dst_nid for e in neighs)
+        for src, neighs in self.rev_adj_list.items():
+            simple_rev_adj_list[src] = set(e.new_dst_nid for e in neighs)
+
+        for src, neighs in simple_adj_list.items():
+            for dst in neighs:
+                if src not in simple_rev_adj_list.get(dst, []):
+                    print("Adjacency list sanity check failed!")
+                    return False
+        for src, neighs in simple_rev_adj_list.items():
+            for dst in neighs:
+                if src not in simple_adj_list.get(dst, []):
+                    print("Adjacency list sanity check failed!")
+                    return False
+
+        print("Adjacency list sanity check passed!")
+        return True 
 
     def get_neighbours(self, n_id):
         return self.adj_list.get(n_id, [])
