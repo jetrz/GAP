@@ -160,7 +160,7 @@ def chop_walks_seqtk(old_walks, n2s, graph, edges_full, rep1, rep2, seqtk_path):
 
     return new_walks, telo_ref
 
-def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, walk_valid_p, hop):
+def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, walk_valid_p, hop, n2s, kmers, rep_threshold):
     """
     Adds nodes and edges from the PAF and graph.
 
@@ -195,7 +195,8 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, walk_valid_p, hop):
 
     ghost_data = paf_data['ghost_nodes']
     print("Adding ghost nodes for Hop 1...")
-    n2s_ghost, r2n_ghost, r2s_memo = {}, {}, {}
+    n2s_ghost, r2s_memo = {}, {}
+    r2n_ghost = { '+' : {}, '-' : {} }
     added_nodes_h1_count, added_nodes_h2_count = 0, 0
     c_ghost_data = ghost_data['hop_1']
     for orient in ['+', '-']:
@@ -216,6 +217,21 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, walk_valid_p, hop):
             if hop <= 1:
                 if not curr_out_neighbours or not curr_in_neighbours: continue
                 if all(x==n2n_start[next(iter(curr_out_neighbours))[0]] for x in [n2n_start[n[0]] for n in curr_out_neighbours]+[n2n_end[n[0]] for n in curr_in_neighbours]): continue
+
+            if read_id not in r2s_memo:
+                pos_seq, rev_seq = get_seqs(read_id, hifi_r2s, ul_r2s)
+                r2s_memo[read_id] = { '+':pos_seq, '-':rev_seq }
+            c_seq = r2s_memo[read_id][orient]
+            if len(curr_out_neighbours) > 0:
+                avg_out_ol_len = sum(n[2] for n in curr_out_neighbours)//len(curr_out_neighbours)
+                overlap_seq = c_seq[-avg_out_ol_len:]
+                _, missed, total = kmers.get_seq_cov(overlap_seq)
+                if missed >= rep_threshold*total: continue
+            if len(curr_in_neighbours) > 0:
+                avg_in_ol_len = sum(n[2] for n in curr_in_neighbours)//len(curr_in_neighbours)
+                overlap_seq = c_seq[:avg_in_ol_len]
+                _, missed, total = kmers.get_seq_cov(overlap_seq)
+                if missed >= rep_threshold*total: continue
 
             for n in curr_out_neighbours:
                 adj_list.add_edge(Edge(
@@ -238,11 +254,8 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, walk_valid_p, hop):
                     ol_sim=n[3]
                 ))
 
-            if read_id not in r2s_memo:
-                pos_seq, rev_seq = get_seqs(read_id, hifi_r2s, ul_r2s)
-                r2s_memo[read_id] = { '+':pos_seq, '-':rev_seq }
-            n2s_ghost[n_id] = r2s_memo[read_id][orient]
-            r2n_ghost[read_id] = n_id
+            n2s_ghost[n_id] = c_seq
+            r2n_ghost[orient][read_id] = n_id
             n_id += 1; added_nodes_h1_count += 1
 
     print("Adding ghost nodes for Hop 2...")
@@ -252,19 +265,32 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, walk_valid_p, hop):
             curr_out_neighbours, curr_in_neighbours = set(), set()
 
             for i, out_read_id in enumerate(data['outs']):
-                c_read_id = out_read_id[0]
-                if c_read_id in r2n_ghost: # This is a ghost node
-                    out_n_id = r2n_ghost[c_read_id]
-                    curr_out_neighbours.add((out_n_id, data['prefix_len_outs'][i], data['ol_len_outs'][i], data['ol_similarity_outs'][i]))
+                c_read_id, c_orient = out_read_id[0], out_read_id[1]
+                if c_read_id not in r2n_ghost[c_orient]: continue
+                out_n_id = r2n_ghost[c_orient][c_read_id]
+                curr_out_neighbours.add((out_n_id, data['prefix_len_outs'][i], data['ol_len_outs'][i], data['ol_similarity_outs'][i]))
 
             for i, in_read_id in enumerate(data['ins']):
-                c_read_id = in_read_id[0]
-                if c_read_id in r2n_ghost:
-                    in_n_id = r2n_ghost[c_read_id]
-                    curr_in_neighbours.add((in_n_id, data['prefix_len_ins'][i], data['ol_len_ins'][i], data['ol_similarity_ins'][i]))
+                c_read_id, c_orient = in_read_id[0], in_read_id[1]
+                if c_read_id not in r2n_ghost[c_orient]: continue
+                in_n_id = r2n_ghost[c_orient][c_read_id]
+                curr_in_neighbours.add((in_n_id, data['prefix_len_ins'][i], data['ol_len_ins'][i], data['ol_similarity_ins'][i]))
 
             # ghost nodes in outermost hop are only useful if they have both at least one outgoing and one incoming edge
             if not curr_out_neighbours or not curr_in_neighbours: continue
+
+            if read_id not in r2s_memo:
+                pos_seq, rev_seq = get_seqs(read_id, hifi_r2s, ul_r2s)
+                r2s_memo[read_id] = { '+':pos_seq, '-':rev_seq }
+            c_seq = r2s_memo[read_id][orient]
+            avg_out_ol_len = sum(n[2] for n in curr_out_neighbours)//len(curr_out_neighbours)
+            overlap_seq = c_seq[-avg_out_ol_len:]
+            _, missed, total = kmers.get_seq_cov(overlap_seq)
+            if missed >= rep_threshold*total: continue
+            avg_in_ol_len = sum(n[2] for n in curr_in_neighbours)//len(curr_in_neighbours)
+            overlap_seq = c_seq[:avg_in_ol_len]
+            _, missed, total = kmers.get_seq_cov(overlap_seq)
+            if missed >= rep_threshold*total: continue
 
             for n in curr_out_neighbours:
                 adj_list.add_edge(Edge(
@@ -287,48 +313,112 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, walk_valid_p, hop):
                     ol_sim=n[3]
                 ))
 
-            if read_id not in r2s_memo:
-                pos_seq, rev_seq = get_seqs(read_id, hifi_r2s, ul_r2s)
-                r2s_memo[read_id] = { '+':pos_seq, '-':rev_seq }
-            n2s_ghost[n_id] = r2s_memo[read_id][orient]
-            r2n_ghost[read_id] = n_id
+            n2s_ghost[n_id] = c_seq
+            r2n_ghost[orient][read_id] = n_id
             n_id += 1; added_nodes_h2_count += 1
 
     print(f"Number of ghost nodes added - Hop 1: {added_nodes_h1_count}, Hop 2: {added_nodes_h2_count}")
 
     print(f"Adding edges between existing nodes...")
     valid_src, valid_dst, prefix_lens, ol_lens, ol_sims = paf_data['ghost_edges']['valid_src'], paf_data['ghost_edges']['valid_dst'], paf_data['ghost_edges']['prefix_len'], paf_data['ghost_edges']['ol_len'], paf_data['ghost_edges']['ol_similarity']
-    added_edges_h1_count, added_edges_h2_count = 0, 0
-    for i in tqdm(range(len(valid_src)), ncols=120):
+    
+    # Reformat first. This shouldn't take long...
+    ghost_edges = { 'hop_1' : defaultdict(lambda: defaultdict(list)), 'hop_2' : defaultdict(lambda: defaultdict(list)) }
+    for i in tqdm(range(len(valid_src)), ncols=120, desc="Reformatting"):
         src, dst, prefix_len, ol_len, ol_sim = valid_src[i], valid_dst[i], prefix_lens[i], ol_lens[i], ol_sims[i]
-        src_read_id, dst_read_id = src[0], dst[0]
+        src_read_id, src_orient, dst_read_id, dst_orient = src[0], src[1], dst[0], dst[1]
         if src_read_id in r2n and dst_read_id in r2n: # Edge is from 1-hop neighbourhood
-            src_n_id = r2n[src_read_id][0] if src[1] == '+' else r2n[src_read_id][1]
-            dst_n_id = r2n[dst_read_id][0] if dst[1] == '+' else r2n[dst_read_id][1]
+            src_n_id = r2n[src_read_id][0] if src_orient == '+' else r2n[src_read_id][1]
+            dst_n_id = r2n[dst_read_id][0] if dst_orient == '+' else r2n[dst_read_id][1]
             if src_n_id not in n2n_end or dst_n_id not in n2n_start: continue
             if n2n_end[src_n_id] == n2n_start[dst_n_id]: continue # ignore self-edges
+            ghost_edges['hop_1'][src_n_id]['dsts'].append(dst)
+            ghost_edges['hop_1'][src_n_id]['prefix_lens'].append(prefix_len)
+            ghost_edges['hop_1'][src_n_id]['ol_lens'].append(ol_len)
+            ghost_edges['hop_1'][src_n_id]['ol_sims'].append(ol_sim)
+        elif hop >= 2 and src_read_id in r2n_ghost[src_orient] and dst_read_id in r2n_ghost[dst_orient]:
+            src_n_id, dst_n_id = r2n_ghost[src_orient][src_read_id], r2n_ghost[dst_orient][dst_read_id]
+            ghost_edges['hop_2'][src_n_id]['dsts'].append(dst)
+            ghost_edges['hop_2'][src_n_id]['prefix_lens'].append(prefix_len)
+            ghost_edges['hop_2'][src_n_id]['ol_lens'].append(ol_len)
+            ghost_edges['hop_2'][src_n_id]['ol_sims'].append(ol_sim)
+
+    added_edges_h1_count, added_edges_h2_count = 0, 0
+    for src_n_id, data in tqdm(ghost_edges['hop_1'].items(), ncols=120, desc="Hop 1"):
+        avg_ol_len = sum(data['ol_lens'])//len(data['ol_lens'])
+        overlap_seq = n2s[src_n_id][-avg_ol_len:]
+        _, missed, total = kmers.get_seq_cov(overlap_seq)
+        if missed >= rep_threshold*total: continue
+        for i in range(len(data['dsts'])):
+            dst, prefix_len, ol_len, ol_sim = data['dsts'][i], data['prefix_lens'][i], data['ol_lens'][i], data['ol_sims'][i]
+            dst_n_id = r2n[dst[0]][0] if dst[1] == '+' else r2n[dst[0]][1]
             adj_list.add_edge(Edge(
                 new_src_nid=n2n_end[src_n_id], 
                 new_dst_nid=n2n_start[dst_n_id], 
                 old_src_nid=src_n_id, 
-                old_dst_nid=dst_n_id, 
+                old_dst_nid=dst_n_id,
                 prefix_len=prefix_len, 
                 ol_len=ol_len, 
                 ol_sim=ol_sim
             ))
             added_edges_h1_count += 1
-        elif hop >= 2 and src_read_id in r2n_ghost and dst_read_id in r2n_ghost: # Edge is from 2-hop neighbourhood
-            src_n_id, dst_n_id = r2n_ghost[src_read_id], r2n_ghost[dst_read_id]
+    for src_n_id, data in tqdm(ghost_edges['hop_2'].items(), ncols=120, desc="Hop 2"):
+        avg_ol_len = sum(data['ol_lens'])//len(data['ol_lens'])
+        overlap_seq = n2s_ghost[src_n_id][-avg_ol_len:]
+        _, missed, total = kmers.get_seq_cov(overlap_seq)
+        if missed >= rep_threshold*total: continue
+        for i in range(len(data['dsts'])):
+            dst, prefix_len, ol_len, ol_sim = data['dsts'][i], data['prefix_lens'][i], data['ol_lens'][i], data['ol_sims'][i]
+            dst_n_id = r2n_ghost[dst[1]][dst[0]]
             adj_list.add_edge(Edge(
                 new_src_nid=src_n_id, 
                 new_dst_nid=dst_n_id, 
                 old_src_nid=None, 
-                old_dst_nid=None, 
+                old_dst_nid=None,
                 prefix_len=prefix_len, 
                 ol_len=ol_len, 
                 ol_sim=ol_sim
             ))
             added_edges_h2_count += 1
+
+
+    # added_edges_h1_count, added_edges_h2_count = 0, 0
+    # for i in tqdm(range(len(valid_src)), ncols=120):
+    #     src, dst, prefix_len, ol_len, ol_sim = valid_src[i], valid_dst[i], prefix_lens[i], ol_lens[i], ol_sims[i]
+    #     src_read_id, src_orient, dst_read_id, dst_orient = src[0], src[1], dst[0], dst[1]
+    #     if src_read_id in r2n and dst_read_id in r2n: # Edge is from 1-hop neighbourhood
+    #         src_n_id = r2n[src_read_id][0] if src_orient == '+' else r2n[src_read_id][1]
+    #         dst_n_id = r2n[dst_read_id][0] if dst_orient == '+' else r2n[dst_read_id][1]
+    #         if src_n_id not in n2n_end or dst_n_id not in n2n_start: continue
+    #         if n2n_end[src_n_id] == n2n_start[dst_n_id]: continue # ignore self-edges
+            
+    #         overlap_seq = n2s[src_n_id][-ol_len:]
+    #         _, missed, total = kmers.get_seq_cov(overlap_seq)
+    #         if missed >= rep_threshold*total: continue
+
+    #         adj_list.add_edge(Edge(
+    #             new_src_nid=n2n_end[src_n_id], 
+    #             new_dst_nid=n2n_start[dst_n_id], 
+    #             old_src_nid=src_n_id, 
+    #             old_dst_nid=dst_n_id, 
+    #             prefix_len=prefix_len, 
+    #             ol_len=ol_len, 
+    #             ol_sim=ol_sim
+    #         ))
+    #         added_edges_h1_count += 1
+    #     elif hop >= 2 and src_read_id in r2n_ghost[src_orient] and dst_read_id in r2n_ghost[dst_orient]: # Edge is from 2-hop neighbourhood
+    #         src_n_id, dst_n_id = r2n_ghost[src_orient][src_read_id], r2n_ghost[dst_orient][dst_read_id]
+    #         adj_list.add_edge(Edge(
+    #             new_src_nid=src_n_id, 
+    #             new_dst_nid=dst_n_id, 
+    #             old_src_nid=None, 
+    #             old_dst_nid=None, 
+    #             prefix_len=prefix_len, 
+    #             ol_len=ol_len, 
+    #             ol_sim=ol_sim
+    #         ))
+    #         added_edges_h2_count += 1
+
 
     print(f"Number of edges between existing nodes added - Hop 1: {added_edges_h1_count}, Hop 2: {added_edges_h2_count}")
 
@@ -523,7 +613,7 @@ def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, n2s
     walk_telo = get_telo_info(start_node)
 
     while True:
-        neighs = adj_list.get_neighbours(c_node)
+        neighs = adj_list.get_successors(c_node)
         c_neighs, c_neighs_terminate = [], []
 
         for n in neighs:
@@ -554,7 +644,7 @@ def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, n2s
                 s1 = n2s_ghost[c_node] if c_node >= n_old_walks else n2s[n.old_src_nid]
                 s2 = n2s_ghost[n.new_dst_nid] if n.new_dst_nid >= n_old_walks else n2s[n.old_dst_nid]
                 if n.ol_len + 100 + kmers_config['k'] > len(s1) or n.ol_len + 100 + kmers_config['k'] > len(s2): continue # there must be at least 100 kmers to calculate the coverage
-                cov_diff, cov_check, is_invalid = check_connection_cov(s1[:n.ol_len], s2[n.ol_len:], kmers, kmers_config)
+                cov_diff, cov_check, is_invalid = check_connection_cov(s1[:-n.ol_len], s2[n.ol_len:], kmers, kmers_config)
                 if not is_invalid and not cov_check: continue
                 if cov_diff < best_diff:
                     best_diff = cov_diff
@@ -566,7 +656,7 @@ def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, n2s
                     s1 = n2s_ghost[c_node] if c_node >= n_old_walks else n2s[n.old_src_nid]
                     s2 = n2s_ghost[n.new_dst_nid] if n.new_dst_nid >= n_old_walks else n2s[n.old_dst_nid]
                     if n.ol_len + 100 + kmers_config['k'] > len(s1) or n.ol_len + 100 + kmers_config['k'] > len(s2): continue # there must be at least 100 kmers to calculate the coverage
-                    cov_diff, cov_check, is_invalid = check_connection_cov(s1[:n.ol_len], s2[n.ol_len:], kmers, kmers_config)
+                    cov_diff, cov_check, is_invalid = check_connection_cov(s1[:-n.ol_len], s2[n.ol_len:], kmers, kmers_config)
                     if not is_invalid and not cov_check: continue
                     if cov_diff < best_diff:
                         best_diff = cov_diff
@@ -787,14 +877,17 @@ def postprocess(name, hyperparams, paths, aux, time_start):
         hifi_r2s=hifi_r2s,
         ul_r2s=ul_r2s,
         walk_valid_p=hyperparams['walk_valid_p'][0],
-        hop=hyperparams['hop']
+        hop=hyperparams['hop'],
+        n2s=n2s,
+        kmers=kmers,
+        rep_threshold=hyperparams['kmers']['rep_threshold']
     )
     if adj_list is None and n2s_ghost is None:
         print("No suitable nodes and edges found to add to these walks. Returning...")
         return
     
-    print(f"Removing repetitive ghosts... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-    adj_list, n2s_ghost = remove_repetitive_ghosts(adj_list, n2s_ghost, kmers, hyperparams['kmers']['rep_threshold'])
+    # print(f"Removing repetitive ghosts... (Time: {timedelta_to_str(datetime.now() - time_start)})")
+    # adj_list, n2s_ghost = remove_repetitive_ghosts(adj_list, n2s_ghost, kmers, hyperparams['kmers']['rep_threshold'])
 
     # Remove duplicate edges between nodes. If there are multiple connections between a walk and another node/walk, we choose the best one.
     # This could probably have been done while adding the edges in. However, to avoid confusion, i'm doing this separately.
@@ -815,7 +908,7 @@ def postprocess(name, hyperparams, paths, aux, time_start):
         edges_full=edges_full,
         decoding=hyperparams['decoding']
     )
-    analyse_graph(adj_list, telo_ref, new_walks, paths['save'], 0)
+    if hyperparams['hop'] <= 1: analyse_graph(adj_list, telo_ref, new_walks, paths['save'], 0) # analyse graph cannot be run for >= 2 hops, graph is too big
 
     print(f"Generating contigs... (Time: {timedelta_to_str(datetime.now() - time_start)})")
     contigs = get_contigs(walks, new_walks, adj_list, n2s, n2s_ghost, old_graph, edges_full)
@@ -829,12 +922,11 @@ def postprocess(name, hyperparams, paths, aux, time_start):
     return
 
 def run_postprocessing(config):
-    time_start = datetime.now()
-
     postprocessing_config = config['postprocessing']
     postprocessing_config['kmers'] = config['misc']['kmers']
     genomes = config['run']['postprocessing']['genomes']
     for genome in genomes:
+        time_start = datetime.now()
         postprocessing_config['telo_motif'] = config['genome_info'][genome]['telo_motifs']
         paths = config['genome_info'][genome]['paths']
         paths.update(config['misc']['paths'])

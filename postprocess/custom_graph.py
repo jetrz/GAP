@@ -75,7 +75,7 @@ class AdjList():
         del self.rev_adj_list[n_id]
 
     def get_in_out_deg(self, n_id):
-        return len(self.rev_adj_list[n_id]), len(self.adj_list[n_id])
+        return len(self.rev_adj_list.get(n_id, [])), len(self.adj_list.get(n_id, []))
 
     def sanity_check(self):
         """
@@ -101,7 +101,12 @@ class AdjList():
         print("Adjacency list sanity check passed!")
         return True 
 
-    def get_neighbours(self, n_id):
+    def get_predecessors(self, n_id):
+        preds = self.rev_adj_list.get(n_id, [])
+        preds = set(self.re2e[e] for e in preds)
+        return preds
+
+    def get_successors(self, n_id):
         return self.adj_list.get(n_id, [])
     
     def __str__(self):

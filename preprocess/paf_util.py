@@ -402,7 +402,7 @@ def parse_paf(paths, aux):
             'edge_hops' : respective edge hops,
         },
         ghost_nodes = {
-            'hop_<n>' {
+            'hop_<n>' : {
                 '+' : {
                     read_id : {
                         'read_len' : Read length for this read

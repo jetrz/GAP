@@ -4,7 +4,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import argrelextrema
-import itertools, subprocess
+import itertools, pickle, subprocess
 
 def process_chunk(pairs):
     results = []
@@ -18,7 +18,7 @@ def process_chunk(pairs):
 
 class KmerManager():
     def __init__(self, k, save_path, mode):
-        if mode not in ("all", "query"): raise ValueError("Invalid Kmer mode!")
+        if mode not in ("all", "query", "pickle"): raise ValueError("Invalid Kmer mode!")
 
         self.k = k
         self.mode = mode
@@ -27,9 +27,14 @@ class KmerManager():
         self.base = 4
         self.mod = 2**61-1
         self.freqs = None
-
         save_path += f"{self.k}mers"
         self.jf_path = save_path+".jf"
+
+        if mode == "pickle":
+            with open(f"{save_path}_hashed.pkl", 'rb') as f:
+                self.freqs = pickle.load(f)
+            return
+
         # Get lower and upper bounds, and plot the graph
         cmd = f"jellyfish histo {save_path}.jf"
         res = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -93,17 +98,6 @@ class KmerManager():
                         for kmer, kmer_rev, freq in future.result():
                             freqs[self.hash_kmer(kmer)] = freq
                             freqs[self.hash_kmer(kmer_rev)] = freq
-
-            # process = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True, bufsize=8192)
-            # lines = iter(process.stdout)
-            # while True:
-            #     pair = [s.strip() for s in itertools.islice(lines, 2)]
-            #     if not pair: break
-            #     freq = int(pair[0][1:])
-            #     kmer = pair[1]
-            #     freqs[self.hash_kmer(kmer)] = freq
-            #     freqs[self.hash_kmer_rev(kmer)] = freq
-            # process.wait()
             
             self.freqs = freqs
 
@@ -114,7 +108,7 @@ class KmerManager():
             avg_cov, missed, total = self.seq_memo[seq]
             return avg_cov, missed, total
         
-        if self.mode == "all":
+        if self.mode in ["all", "pickle"]:
             h = self.hash_kmer(seq[:self.k])
             hashes = [h]
             power = pow(self.base, self.k-1, self.mod)
@@ -162,14 +156,5 @@ class KmerManager():
             h = (h * self.base + self.char_to_int(c)) % self.mod
         return h
     
-    def hash_kmer_rev(self, kmer):
-        h = 0
-        for c in reversed(kmer):
-            h = (h * self.base + self.char_to_int(self.complement_base(c))) % self.mod
-        return h
-    
     def char_to_int(self, c):
         return {'A': 0, 'C': 1, 'G': 2, 'T': 3}[c]
-    
-    def complement_base(self, c):
-        return {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}[c]
