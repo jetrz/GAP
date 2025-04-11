@@ -305,8 +305,9 @@ def parse_row(row):
 
     if str(src_id) in READS_PARSED and str(dst_id) in READS_PARSED:
         c_ol_len = end1-start1 # overlapping region length might not always be equal between source and target. but we always take source for ol length
-        edit_dist = edlib.align(src_seq, dst_seq)['editDistance']
-        c_ol_similarity = 1 - edit_dist / c_ol_len
+        # edit_dist = edlib.align(src_seq, dst_seq)['editDistance']
+        # c_ol_similarity = 1 - edit_dist / c_ol_len
+        c_ol_similarity = None
         if src[0] == id1:
             src_len, dst_len = len1, len2
             c_prefix_len, c_prefix_len_rev = len1-c_ol_len, len2-c_ol_len
@@ -337,8 +338,9 @@ def parse_row(row):
         }
 
         c_ol_len = end1-start1 # overlapping region length might not always be equal between source and target. but we always take source for ol length
-        edit_dist = edlib.align(src_seq, dst_seq)['editDistance']
-        c_ol_similarity = 1 - edit_dist / c_ol_len
+        # edit_dist = edlib.align(src_seq, dst_seq)['editDistance']
+        # c_ol_similarity = 1 - edit_dist / c_ol_len
+        c_ol_similarity = None
         if src[0] == id1:
             src_len, dst_len = len1, len2
             c_prefix_len, c_prefix_len_rev = len1-c_ol_len, len2-c_ol_len
@@ -367,8 +369,9 @@ def parse_row(row):
         }
 
         c_ol_len = end1-start1 # overlapping region length might not always be equal between source and target. but we always take source for ol length
-        edit_dist = edlib.align(src_seq, dst_seq)['editDistance']
-        c_ol_similarity = 1 - edit_dist / c_ol_len
+        # edit_dist = edlib.align(src_seq, dst_seq)['editDistance']
+        # c_ol_similarity = 1 - edit_dist / c_ol_len
+        c_ol_similarity = None
         if src[0] == id1:
             src_len, dst_len = len1, len2
             c_prefix_len, c_prefix_len_rev = len1-c_ol_len, len2-c_ol_len
