@@ -1,10 +1,11 @@
 from datetime import datetime
-import dgl, gc, os, pickle, subprocess, torch
+import dgl, gc, pickle, torch
 from pyfaidx import Fasta
 
 from misc.utils import pyg_to_dgl, timedelta_to_str
 from .gfa_util import preprocess_gfa
 from .paf_util import parse_paf
+from ..postprocess.kmer_manager import KmerManager
 
 def run_preprocessing(config):
     source, genomes = config['run']['preprocessing']['source'], config['run']['preprocessing']['genomes']
@@ -43,13 +44,9 @@ def run_preprocessing(config):
         gc.collect()
 
         print(f"Generating k-mer counts using Jellyfish... (Time: {timedelta_to_str(datetime.now() - time_start)})")
-        k = config['misc']['kmers']['k']
-        hifiasm_path = config['genome_info'][genome]['paths']['hifiasm']
-        if os.path.isfile(hifiasm_path+f"{k}mers.jf"):
-            print("Jellyfish has already been generated!")
-        else:
-            command = f"jellyfish count -m {k} -s 100M -t 10 -o {k}mers.jf -C {config['genome_info'][genome]['paths']['ec_reads']}"
-            subprocess.run(command, shell=True, cwd=hifiasm_path)
+        kmer_manager = KmerManager(k=config['misc']['kmers']['k'], save_path=config['genome_info'][genome]['paths']['hifiasm'])
+        kmer_manager.gen_jf(config['genome_info'][genome]['paths']['ec_reads'])
+        kmer_manager.gen_hashed_kmers()
 
         print(f"Run finished! (Time: {timedelta_to_str(datetime.now() - time_start)})")
 

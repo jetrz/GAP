@@ -929,7 +929,7 @@ def run_postprocessing(config):
             aux['paf_data'] = pickle.load(f)
             print(f"PAF data loaded... (Time: {timedelta_to_str(datetime.now() - time_start)})")
 
-        kmers = KmerManager(k=postprocessing_config['kmers']['k'], save_path=paths['hifiasm'], mode=postprocessing_config['kmers']['mode'])
+        kmers = KmerManager(k=postprocessing_config['kmers']['k'], save_path=paths['hifiasm'])
         aux['kmers'] = kmers
         print(f"Kmers data loaded... (Time: {timedelta_to_str(datetime.now() - time_start)})")
 
@@ -948,6 +948,6 @@ def run_postprocessing(config):
         print(f'R2S data loaded... (Time: {timedelta_to_str(datetime.now() - time_start)})')
 
         postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, time_start=time_start)
-        # for diff in [0.75, 1]:
-        #     postprocessing_config['kmers']['diff'] = diff
+        # for hop in [1, 2]:
+        #     postprocessing_config['hop'] = hop
         #     postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, time_start=time_start)

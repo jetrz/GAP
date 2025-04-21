@@ -142,7 +142,10 @@ def analyse_graph(adj_list, telo_ref, walks, save_path, iteration):
     for source, neighs in adj_list.adj_list.items():
         for n in neighs:
             nxg.add_edge(source, n.new_dst_nid)
-            labels[(source, n.new_dst_nid)] = f"OL Len: {n.ol_len}\nOL Sim: {round(n.ol_sim, 3)}\nPrefix Len: {n.prefix_len}"
+            if n.ol_sim is None:
+                labels[(source, n.new_dst_nid)] = f"OL Len: {n.ol_len}\nPrefix Len: {n.prefix_len}"
+            else:
+                labels[(source, n.new_dst_nid)] = f"OL Len: {n.ol_len}\nOL Sim: {round(n.ol_sim, 3)}\nPrefix Len: {n.prefix_len}"
     pickle.dump(nxg, open(save_path+"nx_graph.pkl", 'wb'))
 
     colors = []
@@ -244,10 +247,7 @@ def get_kmer_solid_thresholds(save_path_wo_ext):
         kmer_freqs.extend([split[0]]*split[1])
     cutoff = np.percentile(kmer_freqs, 99.5)
     kmer_freqs = [i for i in kmer_freqs if i <= cutoff]
-
-    average = np.mean(kmer_freqs)
     unique_kmer_freqs = np.array(list(set(kmer_freqs)))
-    nearest_average = unique_kmer_freqs[(np.abs(unique_kmer_freqs - average)).argmin()]
 
     freqs = Counter(kmer_freqs)
     max_freq = np.max(unique_kmer_freqs)
@@ -255,6 +255,9 @@ def get_kmer_solid_thresholds(save_path_wo_ext):
     minima_inds = argrelextrema(values, np.less)[0]
 
     lower, upper = minima_inds[0]+1, None
+    kmer_freqs = [i for i in kmer_freqs if i > lower]
+    average = np.mean(kmer_freqs)
+    nearest_average = unique_kmer_freqs[(np.abs(unique_kmer_freqs - average)).argmin()]
     for m in minima_inds:
         if m > nearest_average-1:
             upper = m+1
