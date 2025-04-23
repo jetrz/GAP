@@ -36,6 +36,12 @@ def parse_kmer_fasta(path):
     return data
 
 class KmerManager():
+    """
+    This class is used both in preprocessing and postprocessing portions. 
+    - In preprocessing, gen_jf() and gen_hashed_kmers() are called.
+    - In postprocessing, get_seq_cov() is called. get_seq_cov() will not work if gen_jf() and gen_hashed_kmers() has not been called for that respective dataset. 
+    """
+
     def __init__(self, k, save_path):
         self.k = k
         self.seq_memo = {}
@@ -44,8 +50,12 @@ class KmerManager():
         self.freqs = None
         self.save_path = save_path
 
-        with open(f"{save_path}{k}mers_hashed.pkl", 'rb') as f:
-            self.freqs = pickle.load(f)
+        hashed_path = f"{save_path}{k}mers_hashed.pkl"
+        if os.path.isfile(hashed_path):
+            with open(hashed_path, 'rb') as f:
+                self.freqs = pickle.load(f)
+        else:
+            print("Hashed kmers pickle not found!")
 
         return
     

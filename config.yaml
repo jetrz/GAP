@@ -2,11 +2,11 @@ run:
   preprocessing:
     source: 'hifiasm'
     genomes:
-      - 'arab'
+      # - 'arab'
       # - 'chicken'
       # - 'mouse'
       # - 'chm13'
-      # - 'maize'
+      - 'maize'
       # - 'hg002_d_20x_scaf_p'
       # - 'hg002_d_20x_scaf_m'
       # - 'bonobo_d_20x_scaf_p'
@@ -25,11 +25,11 @@ run:
   generate_baseline:
     source: 'hifiasm'
     genomes:
-      - 'arab'
+      # - 'arab'
       # - 'chicken'
       # - 'mouse'
       # - 'chm13'
-      # - 'maize'
+      - 'maize'
       # - 'hg002_d_20x_scaf_p'
       # - 'hg002_d_20x_scaf_m'
       # - 'bonobo_d_20x_scaf_p'
@@ -47,11 +47,11 @@ run:
       # - 'gorilla_d_ont_20x_scaf_m'
   postprocessing:
     genomes:
-      - 'arab'
+      # - 'arab'
       # - 'chicken'
       # - 'mouse'
       # - 'chm13'
-      # - 'maize'
+      - 'maize'
       # - 'hg002_d_20x_scaf_p'
       # - 'hg002_d_20x_scaf_m'
       # - 'bonobo_d_20x_scaf_p'
@@ -69,11 +69,10 @@ run:
       # - 'gorilla_d_ont_20x_scaf_m'
 
 postprocessing:
-  add_inner_edges : false
+  add_inner_edges : true
   use_telomere_info : true
   dfs_penalty: null # None, 'ol_len' or 'ol_sim'
   decoding: 'coverage' # 'default' or 'gnnome_score' or 'coverage' or 'coverage_lookahead'
-  iterations: 1
   walk_valid_p: 0.01 # ensure there are at least # iterations number of values
   hop: 1
 

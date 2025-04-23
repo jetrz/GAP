@@ -5,7 +5,7 @@ from pyfaidx import Fasta
 from misc.utils import pyg_to_dgl, timedelta_to_str
 from .gfa_util import preprocess_gfa
 from .paf_util import parse_paf
-from ..postprocess.kmer_manager import KmerManager
+from postprocess.kmer_manager import KmerManager
 
 def run_preprocessing(config):
     source, genomes = config['run']['preprocessing']['source'], config['run']['preprocessing']['genomes']
