@@ -175,23 +175,30 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, hyperparams):
     walk_valid_p, hop, add_inner_edges = hyperparams['walk_valid_p'], hyperparams['hop'], hyperparams['add_inner_edges']
 
     # Only the first and last walk_valid_p% of nodes in a walk can be connected. Also initialises nodes from walks
-    n2n_start, n2n_end = {}, {} # n2n maps old n_id to new n_id, for the start and ends of the walks respectively
+    n2n_start, n2n_end = defaultdict(set), defaultdict(set) # n2n maps old n_id to new n_id, for the start and ends of the walks respectively
     nodes_in_old_walks = set()
     for walk in old_walks:
         nodes_in_old_walks.update(walk)
 
         if len(walk) == 1:
-            n2n_start[walk[0]] = n_id
-            n2n_end[walk[0]] = n_id
+            n2n_start[walk[0]].add(n_id)
+            n2n_end[walk[0]].add(n_id)
         else:
             cutoff = int(max(1, len(walk) // (1/walk_valid_p)))
             first_part, last_part = walk[:cutoff], walk[-cutoff:]
             for n in first_part:
-                n2n_start[n] = n_id
+                n2n_start[n].add(n_id)
             for n in last_part:
-                n2n_end[n] = n_id
+                n2n_end[n].add(n_id)
 
         n_id += 1
+
+    n2n_start_multi_count, n2n_end_multi_count = 0, 0
+    for v in n2n_start.values():
+        if len(v) > 1: n2n_start_multi_count += 1
+    for v in n2n_end.values():
+        if len(v) > 1: n2n_end_multi_count += 1
+    print(f"Number of old nodes duplicated in n2n_start: {n2n_start_multi_count}, n2n_end: {n2n_end_multi_count}")
 
     ghost_data = paf_data['ghost_nodes']
     print("Adding ghost nodes for Hop 1...")
@@ -218,28 +225,31 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, hyperparams):
             # If only hop 1 is used, ghost nodes are only useful if they have both at least one outgoing and one incoming edge.
             if hop <= 1:
                 if not curr_out_neighbours or not curr_in_neighbours: continue
-                if all(x==n2n_start[next(iter(curr_out_neighbours))[0]] for x in [n2n_start[n[0]] for n in curr_out_neighbours]+[n2n_end[n[0]] for n in curr_in_neighbours]): continue
+                if all(len(n2n_start[n[0]]) == 1 for n in curr_out_neighbours) and all(len(n2n_end[n[0]]) == 1 for n in curr_in_neighbours):
+                    if all(x==next(iter(n2n_start[next(iter(curr_out_neighbours))[0]])) for x in [next(iter(n2n_start[n[0]])) for n in curr_out_neighbours]+[next(iter(n2n_end[n[0]])) for n in curr_in_neighbours]): continue
 
             for n in curr_out_neighbours:
-                adj_list.add_edge(Edge(
-                    new_src_nid=n_id,
-                    new_dst_nid=n2n_start[n[0]],
-                    old_src_nid=None,
-                    old_dst_nid=n[0],
-                    prefix_len=n[1],
-                    ol_len=n[2],
-                    ol_sim=n[3]
-                ))
+                for new_dst_nid in n2n_start[n[0]]:
+                    adj_list.add_edge(Edge(
+                        new_src_nid=n_id,
+                        new_dst_nid=new_dst_nid,
+                        old_src_nid=None,
+                        old_dst_nid=n[0],
+                        prefix_len=n[1],
+                        ol_len=n[2],
+                        ol_sim=n[3]
+                    ))
             for n in curr_in_neighbours:
-                adj_list.add_edge(Edge(
-                    new_src_nid=n2n_end[n[0]],
-                    new_dst_nid=n_id,
-                    old_src_nid=n[0],
-                    old_dst_nid=None,
-                    prefix_len=n[1],
-                    ol_len=n[2],
-                    ol_sim=n[3]
-                ))
+                for new_src_nid in n2n_end[n[0]]:
+                    adj_list.add_edge(Edge(
+                        new_src_nid=new_src_nid,
+                        new_dst_nid=n_id,
+                        old_src_nid=n[0],
+                        old_dst_nid=None,
+                        prefix_len=n[1],
+                        ol_len=n[2],
+                        ol_sim=n[3]
+                    ))
 
             r2n_ghost[orient][read_id] = n_id
             n2r_ghost[n_id] = (read_id, orient)
@@ -310,7 +320,6 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, hyperparams):
                 src_n_id = r2n[src_read_id][0] if src_orient == '+' else r2n[src_read_id][1]
                 dst_n_id = r2n[dst_read_id][0] if dst_orient == '+' else r2n[dst_read_id][1]
                 if src_n_id not in n2n_end or dst_n_id not in n2n_start: continue
-                if n2n_end[src_n_id] == n2n_start[dst_n_id]: continue # ignore self-edges
                 ghost_edges['hop_1'][src_n_id]['dsts'].append(dst)
                 ghost_edges['hop_1'][src_n_id]['prefix_lens'].append(prefix_len)
                 ghost_edges['hop_1'][src_n_id]['ol_lens'].append(ol_len)
@@ -326,16 +335,20 @@ def add_ghosts(old_walks, paf_data, r2n, hifi_r2s, ul_r2s, hyperparams):
             for i in range(len(data['dsts'])):
                 dst, prefix_len, ol_len, ol_sim = data['dsts'][i], data['prefix_lens'][i], data['ol_lens'][i], data['ol_sims'][i]
                 dst_n_id = r2n[dst[0]][0] if dst[1] == '+' else r2n[dst[0]][1]
-                adj_list.add_edge(Edge(
-                    new_src_nid=n2n_end[src_n_id], 
-                    new_dst_nid=n2n_start[dst_n_id], 
-                    old_src_nid=src_n_id, 
-                    old_dst_nid=dst_n_id,
-                    prefix_len=prefix_len, 
-                    ol_len=ol_len, 
-                    ol_sim=ol_sim
-                ))
-                added_edges_h1_count += 1
+
+                for new_src_nid in n2n_end[src_n_id]:
+                    for new_dst_nid in n2n_start[dst_n_id]:
+                        if new_src_nid == new_dst_nid: continue # ignore self edges
+                        adj_list.add_edge(Edge(
+                            new_src_nid=new_src_nid, 
+                            new_dst_nid=new_dst_nid, 
+                            old_src_nid=src_n_id, 
+                            old_dst_nid=dst_n_id,
+                            prefix_len=prefix_len, 
+                            ol_len=ol_len, 
+                            ol_sim=ol_sim
+                        ))
+                        added_edges_h1_count += 1
         for src_n_id, data in tqdm(ghost_edges['hop_2'].items(), ncols=120, desc="Hop 2"):
             for i in range(len(data['dsts'])):
                 dst, prefix_len, ol_len, ol_sim = data['dsts'][i], data['prefix_lens'][i], data['ol_lens'][i], data['ol_sims'][i]
