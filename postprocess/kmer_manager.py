@@ -90,6 +90,8 @@ class KmerManager():
         if os.path.isfile(jf_path):
             print("Jellyfish has already been generated!")
             return
+        else:
+            print("Generating jellyfish file...")
         
         command = f"jellyfish count -m {self.k} -s 100M -t 10 -o {jf_path} -C {ec_reads_path}"
         subprocess.run(command, shell=True)
@@ -104,6 +106,8 @@ class KmerManager():
         if os.path.isfile(hashed_path):
             print("Hashed kmers pickle has already been generated!")
             return
+        else:
+            print("Generating hashed kmers pickle...")
         
         # Get lower and upper bounds, and plot the graph
         cmd = f"jellyfish histo {jf_path}"

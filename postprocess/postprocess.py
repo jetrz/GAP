@@ -927,7 +927,7 @@ def run_postprocessing(config):
         aux['ul_r2s'] = Fasta(paths['ul_reads']) if paths['ul_reads'] else None
         print(f'R2S data loaded... (Time: {timedelta_to_str(datetime.now() - time_start)})')
 
-        postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, time_start=time_start)
-        # for hop in [1, 2]:
-        #     postprocessing_config['hop'] = hop
-        #     postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, time_start=time_start)
+        # postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, time_start=time_start)
+        for b in [True, False]:
+            postprocessing_config['add_inner_edges'] = b
+            postprocess(genome, hyperparams=postprocessing_config, paths=paths, aux=aux, time_start=time_start)
