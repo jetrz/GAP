@@ -3,6 +3,7 @@ from Bio import Seq, SeqIO
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
+from multiprocessing import Pool
 from pyfaidx import Fasta
 from tqdm import tqdm
 
@@ -493,60 +494,67 @@ def check_connection_cov(s1, s2, kmers, kmers_config):
 
 
 
-# def parse_ghost_for_repetitive_wrapper(args):
-#     return parse_ghost_for_repetitive(*args)
+def parse_ghost_for_repetitive_wrapper(args):
+    return parse_ghost_for_repetitive(*args)
 
-# def parse_ghost_for_repetitive(nid, seq, kmers, threshold):
-#     _, missed, total = kmers.get_seq_cov(seq)
-#     return nid, missed >= threshold*total
+def parse_ghost_for_repetitive(nid, seq, predecessors, successors, kmers, threshold):
+    if len(predecessors) > 0:
+        avg_ol_len_pred = sum(e.ol_len for e in predecessors)//len(predecessors)
+        pred_seq = seq[:avg_ol_len_pred]
+        _, missed, total = kmers.get_seq_cov(pred_seq)
+        if missed >= threshold*total: return nid, True
 
-# def remove_repetitive_ghosts(adj_list, n2s_ghost, kmers, threshold):
-#     """
-#     Removes ghost nodes that are flagged as repetitive. (Threshold set by rep_threshold hyperparam). Uses multiprocessing.
-#     """
-#     full_args = [(nid, seq, kmers, threshold) for nid, seq in n2s_ghost.items()]
-#     to_remove = set()
-#     with Pool(40) as pool:
-#         results = pool.imap_unordered(parse_ghost_for_repetitive_wrapper, full_args)
-#         for nid, is_repetitive in tqdm(results, ncols=120, total=len(n2s_ghost)):
-#             if is_repetitive: to_remove.add(nid)
-            
-#     for n in to_remove:
-#         adj_list.remove_node(n)
-#         del n2s_ghost[n]
+    if len(successors) > 0:
+        avg_ol_len_succ = sum(e.ol_len for e in successors)//len(successors)
+        succ_seq = seq[-avg_ol_len_succ:]
+        _, missed, total = kmers.get_seq_cov(succ_seq)
+        if missed >= threshold*total: return nid, True
 
-#     print(f"Repetitive ghosts removed: {len(to_remove)}/{len(to_remove)+len(n2s_ghost)}")
-#     return adj_list, n2s_ghost
-
-
+    return nid, False
 
 def remove_repetitive_ghosts(adj_list, n2s_ghost, kmers, threshold):
+    """
+    Removes ghost nodes that are flagged as repetitive. (Threshold set by rep_threshold hyperparam). Uses multiprocessing.
+    """
+    full_args = [(nid, seq, adj_list.get_predecessors(nid), adj_list.get_successors(nid), kmers, threshold) for nid, seq in n2s_ghost.items()]
     to_remove = set()
-
-    # for nid, seq in tqdm(n2s_ghost.items(), ncols=120):
-    #     _, missed, total = kmers.get_seq_cov(seq)
-    #     if missed >= threshold*total: to_remove.add(nid)
-
-    for nid, seq in tqdm(n2s_ghost.items(), ncols=120):
-        predecessors, successors = adj_list.get_predecessors(nid), adj_list.get_successors(nid)
-        if len(predecessors) > 0:
-            avg_ol_len_pred = sum(e.ol_len for e in predecessors)//len(predecessors)
-            pred_seq = seq[:avg_ol_len_pred]
-            _, missed, total = kmers.get_seq_cov(pred_seq)
-            if missed >= threshold*total: to_remove.add(nid)
-
-        if nid not in to_remove and len(successors) > 0:
-            avg_ol_len_succ = sum(e.ol_len for e in successors)//len(successors)
-            succ_seq = seq[-avg_ol_len_succ:]
-            _, missed, total = kmers.get_seq_cov(succ_seq)
-            if missed >= threshold*total: to_remove.add(nid)
-
+    with Pool(40) as pool:
+        results = pool.imap_unordered(parse_ghost_for_repetitive_wrapper, full_args)
+        for nid, is_repetitive in tqdm(results, ncols=120, total=len(n2s_ghost)):
+            if is_repetitive: to_remove.add(nid)
+            
     for n in to_remove:
         adj_list.remove_node(n)
         del n2s_ghost[n]
 
     print(f"Repetitive ghosts removed: {len(to_remove)}/{len(to_remove)+len(n2s_ghost)}")
     return adj_list, n2s_ghost
+
+
+
+# def remove_repetitive_ghosts(adj_list, n2s_ghost, kmers, threshold):
+#     to_remove = set()
+
+#     for nid, seq in tqdm(n2s_ghost.items(), ncols=120):
+#         predecessors, successors = adj_list.get_predecessors(nid), adj_list.get_successors(nid)
+#         if len(predecessors) > 0:
+#             avg_ol_len_pred = sum(e.ol_len for e in predecessors)//len(predecessors)
+#             pred_seq = seq[:avg_ol_len_pred]
+#             _, missed, total = kmers.get_seq_cov(pred_seq)
+#             if missed >= threshold*total: to_remove.add(nid)
+
+#         if nid not in to_remove and len(successors) > 0:
+#             avg_ol_len_succ = sum(e.ol_len for e in successors)//len(successors)
+#             succ_seq = seq[-avg_ol_len_succ:]
+#             _, missed, total = kmers.get_seq_cov(succ_seq)
+#             if missed >= threshold*total: to_remove.add(nid)
+
+#     for n in to_remove:
+#         adj_list.remove_node(n)
+#         del n2s_ghost[n]
+
+#     print(f"Repetitive ghosts removed: {len(to_remove)}/{len(to_remove)+len(n2s_ghost)}")
+#     return adj_list, n2s_ghost
 
 def get_best_walk_coverage(adj_list, start_node, n_old_walks, telo_ref, n2s, n2s_ghost, kmers, kmers_config, penalty=None, visited_init=None):
     """

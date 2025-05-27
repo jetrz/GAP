@@ -102,12 +102,12 @@ class AdjList():
         return True 
 
     def get_predecessors(self, n_id):
-        preds = self.rev_adj_list.get(n_id, [])
+        preds = self.rev_adj_list.get(n_id, set())
         preds = set(self.re2e[e] for e in preds)
         return preds
 
     def get_successors(self, n_id):
-        return self.adj_list.get(n_id, [])
+        return self.adj_list.get(n_id, set())
     
     def __str__(self):
         n_nodes, n_edges = len(self.adj_list), sum(len(v) for v in self.adj_list.values())
